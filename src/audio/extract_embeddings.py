@@ -7,8 +7,15 @@ import kagglehub
 from tqdm import tqdm
 import argparse
 
-# CRITICAL: Ensure TF version compatibility on Intel Mac
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
+# Hardware-aware environment setup
+if "COLAB_GPU" in os.environ or len(tf.config.list_physical_devices('GPU')) > 0:
+    print("GPU detected. Enabling optimized execution.")
+    # In Colab/GPU, we want XLA enabled for speed
+    os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=2"
+else:
+    # On Intel Mac CPU, keep XLA disabled to avoid deserialization errors
+    os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=-1"
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
 
 def load_perch_model():
     """Download and load the compatible Perch v1 model."""
