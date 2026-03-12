@@ -23,6 +23,7 @@ This repository is dedicated to the [Kaggle BirdCLEF 2026 Competition](https://w
     - `IMPLEMENTATION_LOG.md`: Running record of progress.
     - `DATA_PIPELINE.md`: Documentation for processed data artifacts (e.g., embeddings).
     - `CLOUD_COMPUTE.md`: Guide for running jobs on Vertex AI and GCP.
+    - `FUSION_MODEL_PLAN.md`: Strategic roadmap for Multi-Modal (Perch + Visual) fusion.
 
 ## Building and Running
 
