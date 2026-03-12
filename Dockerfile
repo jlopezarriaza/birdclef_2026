@@ -20,10 +20,22 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
 # CRITICAL FIX for "undefined symbol" errors:
-# We use the system pip to install the exact TF packages that match this GPU image,
-# and tell uv to install everything else WITHOUT touching the tensorflow ecosystem.
+# We use the system pip to install the exact TF packages that match this GPU image.
 RUN pip install tensorflow-hub tensorflow-text==2.16.1
-RUN uv pip install . --system --exclude tensorflow --exclude tensorflow-hub --exclude tensorflow-text
+
+# Tell uv to install all other dependencies from our project, 
+# but specifically skip the ones we just handled via pip.
+RUN uv pip install --system \
+    "librosa<=0.11.0" \
+    "soundfile>=0.13.1" \
+    "pandas>=2.3.3" \
+    "numpy<2.0" \
+    "tqdm>=4.67.3" \
+    "scikit-learn>=1.6.1" \
+    "matplotlib>=3.9.4" \
+    "kaggle==2.0.0" \
+    "google-cloud-storage" \
+    "opencv-python"
 
 # Copy the source code
 COPY src/ ./src/
