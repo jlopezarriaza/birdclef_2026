@@ -27,6 +27,14 @@ This log tracks the development progress, experiments, and architectural decisio
 - **Inference Speed:** Perch v1 inference on a single 5-second window is fast on CPU, which is promising for the 90-minute Kaggle limit.
 
 ### Next Steps
+- [x] Create Exploratory Data Analysis (EDA) notebook for Perch baseline.
 - [ ] Pre-calculate embeddings for the full training set to enable fast training of custom heads.
-- [ ] Exploratory Data Analysis (EDA) of species distribution.
 - [ ] Setup validation strategy (Cross-Validation) based on `train.csv`.
+
+## [2026-03-11] - Baseline EDA
+
+### Completed
+- **EDA Notebook:** Created `notebooks/01_perch_baseline_eda.ipynb`.
+    - Integrated audio visualization (waveform/spectrogram).
+    - Implemented Perch inference loop for batch processing.
+    - Added PCA projection for embedding visualization.
