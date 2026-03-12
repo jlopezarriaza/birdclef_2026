@@ -9,6 +9,9 @@ To accelerate training, we extract 1,280-dimensional embeddings from the raw aud
 
 ### Script
 - **Source:** `src/audio/extract_embeddings.py`
+- **Architecture:** Hybrid Hardware-Aware Execution
+    - **CPU Mode:** Uses Python `multiprocessing` to process files in parallel across all available cores (optimized for high-core cloud instances like `n1-highcpu-32`).
+    - **GPU Mode:** Automatically switches to high-speed sequential processing to prevent VRAM Out-of-Memory (OOM) errors, while enabling XLA JIT optimization.
 - **Logic:**
     1. Loads the first 5 seconds of each training recording (resampled to 32 kHz).
     2. Pads recordings shorter than 5 seconds.

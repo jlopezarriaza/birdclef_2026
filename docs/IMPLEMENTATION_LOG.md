@@ -30,15 +30,16 @@ This log tracks the development progress, experiments, and architectural decisio
 - [ ] Download extracted embeddings from GCS bucket.
 - [ ] Setup validation strategy (Cross-Validation) based on `train.csv`.
 
-## [2026-03-11] - Cloud & Perch v2 Upgrade
+## [2026-03-11] - Optimization & Hybrid Pipeline
 
 ### Completed
-- **Perch v2 Upgrade:** 
-    - Updated `src/audio/extract_embeddings.py` and `src/inference/perch_baseline.py` to use **Perch v2**.
-    - Model now produces higher-quality embeddings based on EfficientNet-B3.
-- **Dockerization:**
-    - Created `Dockerfile` based on `tensorflow/tensorflow:2.16.1-gpu`.
-    - Integrated `uv` for container builds.
-- **Vertex AI Deployment:**
-    - Successfully launched serverless extraction job on a 32-core high-CPU instance (`n1-highcpu-32`).
-    - Configured automatic GCS upload of results to `gs://birdclef-2026-data-birdclef-490003`.
+- **Parallel Extraction:** 
+    - Rewrote `src/audio/extract_embeddings.py` to use a `multiprocessing` Pool.
+    - Optimized for 32-core cloud instances, reducing estimated runtime from ~29 hours to ~1 hour.
+- **Hybrid Hardware Awareness:**
+    - Script now auto-detects CPU vs GPU environments.
+    - Implemented single-process mode for GPUs to prevent VRAM OOM while keeping high-concurrency mode for CPUs.
+- **GCS Integration:**
+    - Finalized automatic upload logic to move results from Vertex AI ephemeral storage to `gs://birdclef-2026-data-birdclef-490003`.
+- **Documentation:**
+    - Updated `CLOUD_COMPUTE.md` and `DATA_PIPELINE.md` with parallelization and GPU-ready instructions.

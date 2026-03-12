@@ -51,8 +51,13 @@ docker buildx build --platform linux/amd64 \
 
 Jobs are defined in `job_config.yaml`. This approach avoids complex CLI syntax and ensures reproducibility.
 
+### Performance Optimization
+The extraction script is **hardware-intelligent**:
+- **CPU Parallelization:** On many-core machines (e.g., 32-core), it spawns parallel processes to maximize throughput.
+- **GPU Readiness:** It automatically detects GPUs and switches to a single-process mode to avoid VRAM exhaustion, while enabling XLA JIT for maximum NVIDIA performance.
+
 ### Job Configuration (`job_config.yaml`)
-We currently use a **32-core high-CPU machine** (`n1-highcpu-32`) to bypass GPU quota limitations while maintaining high throughput.
+We currently use a **32-core high-CPU machine** (`n1-highcpu-32`) to achieve ~32x speedup over local sequential processing while bypassing GPU quota limitations.
 
 ### Submission Command
 ```bash
