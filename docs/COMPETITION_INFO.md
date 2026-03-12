@@ -19,12 +19,13 @@
 - **Row ID Format:** `soundscape_[file_id]_[end_time]` (e.g., `soundscape_12345_5`).
 
 ## Code Requirements
-- **Submission via Notebook:** All submissions must be made through a Kaggle Notebook.
-- **Runtime Limits:**
+- **Training (Off-platform):** You **are allowed** to use external cloud compute (e.g., AWS, GCP, local GPUs) to train your models and process data. There are no restrictions on the compute used for training.
+- **Submission via Notebook:** All final submissions (inference) must be made through a Kaggle Notebook.
+- **Runtime Limits (Inference):**
     - **CPU Notebook:** $\le$ 90 minutes.
-    - **GPU Notebook:** Effectively **disabled** (granted only 1 minute of runtime).
-- **Internet Access:** Must be **disabled** during inference/submission run.
-- **External Data:** Freely and publicly available external data is allowed, including pre-trained models.
+    - **GPU Notebook:** Effectively **disabled** (granted only 1 minute of runtime). Models must be optimized for CPU.
+- **Internet Access:** Must be **disabled** during the inference/submission run.
+- **External Data:** Freely and publicly available external data is allowed, including pre-trained models. If you train on private data, you must make that dataset public on Kaggle before the deadline.
 - **Submission File:** Output must be exactly named `submission.csv`.
 - **No Hand Labeling:** Strictly prohibited on validation or test datasets.
 
