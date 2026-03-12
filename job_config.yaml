@@ -1,6 +1,6 @@
 workerPoolSpecs:
   machineSpec:
-    machineType: n1-highcpu-32
+    machineType: n1-standard-32
   replicaCount: 1
   containerSpec:
     imageUri: us-central1-docker.pkg.dev/birdclef-490003/birdclef-repo/perch-extractor:v2

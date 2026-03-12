@@ -23,8 +23,9 @@ This log tracks the development progress, experiments, and architectural decisio
     - Aggregated competition rules and code requirements in `docs/COMPETITION_INFO.md`.
 
 ### Trials & Observations
-- **Perch v2:** Attempted multiple methods to load `perch_v2_cpu` (SavedModel, hub.load, signature-based). Encountered persistent `InvalidArgumentError` related to `XlaCallModule` and `vhlo.func_v1` deserialization. This is a known issue when loading models exported with newer StableHLO versions into older TensorFlow environments (TF 2.15 on Intel Mac). 
-- **Fallback to Perch v1:** Reverted to **Perch v1** (`bird-vocalization-classifier`) which is verified stable and efficient on this hardware. We will use v1 for initial EDA and embedding generation to maintain project momentum.
+- **Perch v2:** Attempted multiple methods to load `perch_v2_cpu`. Local execution fails on Intel Mac due to `vhlo.func_v1` deserialization.
+- **Memory Exhaustion (GCP):** Initial parallel run on `n1-highcpu-32` (28.8GB RAM) failed with `Replicas low on memory`. Spawning 32 parallel Perch v2 instances exceeded the available RAM.
+- **Resolution:** Switched to **`n1-standard-32`** which provides **120GB of RAM**, successfully accommodating the parallel model instances.
 ### Next Steps
 - [x] Create Exploratory Data Analysis (EDA) notebook for Perch baseline.
 - [x] Create Spectrogram EDA notebook for Visual Modeling.
