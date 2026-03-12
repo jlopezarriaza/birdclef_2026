@@ -22,7 +22,7 @@ COPY pyproject.toml uv.lock ./
 # CRITICAL FIX for "undefined symbol" errors:
 # We use the system pip to install the exact TF packages that match this GPU image,
 # and tell uv to install everything else WITHOUT touching the tensorflow ecosystem.
-RUN pip install tensorflow-hub tensorflow-text
+RUN pip install tensorflow-hub tensorflow-text==2.16.1
 RUN uv pip install . --system --exclude tensorflow --exclude tensorflow-hub --exclude tensorflow-text
 
 # Copy the source code
