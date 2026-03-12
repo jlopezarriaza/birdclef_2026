@@ -26,11 +26,8 @@ This log tracks the development progress, experiments, and architectural decisio
 - **Perch v2:** Attempted multiple methods to load `perch_v2_cpu` (SavedModel, hub.load, signature-based). Encountered persistent `InvalidArgumentError` related to `XlaCallModule` and `vhlo.func_v1` deserialization. This is a known issue when loading models exported with newer StableHLO versions into older TensorFlow environments (TF 2.15 on Intel Mac). 
 - **Fallback to Perch v1:** Reverted to **Perch v1** (`bird-vocalization-classifier`) which is verified stable and efficient on this hardware. We will use v1 for initial EDA and embedding generation to maintain project momentum.
 
-### Next Steps
-- [x] Create Exploratory Data Analysis (EDA) notebook.
-- [x] Implement embedding extraction script (`src/audio/extract_embeddings.py`) with Perch v2 support.
-- [x] Create Dockerfile for GCP/Vertex AI cloud extraction.
-- [ ] Run Perch v2 embedding extraction on GCP (Target: `data/processed/perch_v2_embeddings.npz`).
+- [x] Run Perch v2 embedding extraction on GCP (Launched: Job ID 3475193536821854208).
+- [ ] Download extracted embeddings from GCS bucket.
 - [ ] Setup validation strategy (Cross-Validation) based on `train.csv`.
 
 ## [2026-03-11] - Cloud & Perch v2 Upgrade
@@ -41,5 +38,7 @@ This log tracks the development progress, experiments, and architectural decisio
     - Model now produces higher-quality embeddings based on EfficientNet-B3.
 - **Dockerization:**
     - Created `Dockerfile` based on `tensorflow/tensorflow:2.16.1-gpu`.
-    - Integrated `uv` for lightning-fast container builds.
-    - Optimized for Vertex AI Custom Training jobs.
+    - Integrated `uv` for container builds.
+- **Vertex AI Deployment:**
+    - Successfully launched serverless extraction job on a 32-core high-CPU instance (`n1-highcpu-32`).
+    - Configured automatic GCS upload of results to `gs://birdclef-2026-data-birdclef-490003`.
