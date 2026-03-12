@@ -32,9 +32,17 @@ This log tracks the development progress, experiments, and architectural decisio
 - [x] Implement Visual Modeling Approach (EfficientNet + Spectrograms).
 - [x] Formulate Multi-Modal Fusion Implementation Plan (`docs/FUSION_MODEL_PLAN.md`).
 - [ ] Run Perch v2 embedding extraction on GCP (Job ID 3475193536821854208).
+- [ ] Develop Validation Pipeline using `train_soundscapes`.
 - [ ] Train a baseline classifier on Perch embeddings.
 - [ ] Train a baseline classifier on Spectrograms (Visual Approach).
 - [ ] Implement Fusion Model based on the new roadmap.
+
+## [2026-03-11] - Data Understanding: Samples vs Soundscapes
+
+### Observations
+- **`train_audio` (Samples):** These are curated recordings of specific species. They are "cleaner" and used for core training. However, they don't perfectly represent the test environment.
+- **`train_soundscapes`:** These 1-minute recordings from the Pantanal contain multiple species and background noise (wind, rain, insects). These are **critical** for validation because they match the test set distribution.
+- **Strategy:** We will use `train_audio` for supervised training and `train_soundscapes` for local validation (Out-of-Distribution check) and potentially for fine-tuning/domain adaptation.
 
 ## [2026-03-11] - Visual EDA
 

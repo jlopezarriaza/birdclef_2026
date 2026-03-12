@@ -11,7 +11,12 @@ This repository is dedicated to the [Kaggle BirdCLEF 2026 Competition](https://w
 - **Baseline Model:** Google's **Perch** (Bird Vocalization Classifier), specifically the v1 SavedModel optimized for CPU inference on Intel Mac.
 
 ### Architecture
-- `data/`: Contains raw competition data (audio, metadata) and processed artifacts.
+- `data/`: Contains raw competition data and processed artifacts.
+    - `raw/`: 
+        - `train_audio/`: Short species-specific recordings.
+        - `train_soundscapes/`: 1-minute multi-species recordings.
+        - `train.csv` / `train_soundscapes_labels.csv`: Metadata and labels.
+    - `processed/`: Perch embeddings and mapped metadata.
 - `src/`: Core source code.
     - `audio/`: Logic for audio loading and preprocessing.
     - `inference/`: Scripts for running models on new data.

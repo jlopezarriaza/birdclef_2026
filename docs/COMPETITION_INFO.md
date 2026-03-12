@@ -30,14 +30,32 @@
 - **No Hand Labeling:** Strictly prohibited on validation or test datasets.
 
 ## Data Details
-- **Source:** Network of ~1,000 acoustic recorders in the Pantanal.
-- **Training Audio:**
-    - Thousands of short recordings of individual species (primary/secondary labels).
-    - Metadata includes latitude, longitude, author, and recording quality.
-- **Test Audio:** 
-    - Continuous soundscapes (typically provided as 1-minute or 10-minute files in the hidden test set).
-    - Hidden test set only accessible during the submission scoring process.
-- **Format:** 32 kHz `.ogg` files.
+- **Source:** Network of ~1,000 acoustic recorders in the Pantanal, plus crowdsourced recordings (Xeno-canto, iNaturalist).
+- **Target Classes:** 234 species/sonotypes across Class Aves, Amphibia, Mammalia, Reptilia, and Insecta.
+
+### Training Data
+1. **`train_audio/` (Short Recordings):**
+    - Thousands of short recordings of individual species.
+    - Labels: Found in `train.csv` (`primary_label`, `secondary_labels`).
+    - Metadata: Includes `latitude`, `longitude`, `rating` (1-5), and `author`.
+    - Purpose: Primary source for learning species-specific features.
+
+2. **`train_soundscapes/` (Long Recordings):**
+    - 1-minute continuous recordings from the Pantanal.
+    - Labels: Found in `train_soundscapes_labels.csv`.
+    - Format: Provided for **5-second windows** (`start`, `end`).
+    - Purpose: Realistic evaluation and domain adaptation (handling noise, overlapping calls).
+
+### Metadata Files
+- **`train.csv`**: Main metadata for short recordings.
+- **`train_soundscapes_labels.csv`**: Labels for the 1-minute recordings.
+- **`taxonomy.csv`**: Mapping of codes to scientific names and higher taxonomic ranks.
+- **`recording_location.txt`**: High-level geographic info for the Pantanal sites.
+- **`sample_submission.csv`**: Template for the required output format.
+
+### Format
+- **Audio:** 32 kHz `.ogg` files.
+- **Submission:** Probability scores for each of the 234 target species in 5-second windows.
 
 ## Links
 - [Kaggle Competition](https://www.kaggle.com/competitions/birdclef-2026)
