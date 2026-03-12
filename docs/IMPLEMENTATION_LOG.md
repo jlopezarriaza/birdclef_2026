@@ -28,6 +28,7 @@ This log tracks the development progress, experiments, and architectural decisio
 ### Next Steps
 - [x] Create Exploratory Data Analysis (EDA) notebook for Perch baseline.
 - [x] Create Spectrogram EDA notebook for Visual Modeling.
+- [x] Create Temporal & Migratory EDA notebook.
 - [x] Implement Perch v2 embedding extraction.
 - [x] Implement Visual Modeling Approach (EfficientNet + Spectrograms).
 - [x] Formulate Multi-Modal Fusion Implementation Plan (`docs/FUSION_MODEL_PLAN.md`).
@@ -36,6 +37,14 @@ This log tracks the development progress, experiments, and architectural decisio
 - [ ] Train a baseline classifier on Perch embeddings.
 - [ ] Train a baseline classifier on Spectrograms (Visual Approach).
 - [ ] Implement Fusion Model based on the new roadmap.
+
+## [2026-03-11] - Temporal & Migratory Dynamics
+
+### Completed
+- **Temporal EDA Notebook:** Created `notebooks/03_temporal_migratory_eda.ipynb`.
+    - Identified migratory genera (Hirundo, Tringa, etc.).
+    - Visualized seasonal presence of top migratory species in soundscapes.
+    - Confirmed the necessity of a "Temporal Branch" in the fusion architecture.
 
 ## [2026-03-11] - Data Understanding: Samples vs Soundscapes
 
