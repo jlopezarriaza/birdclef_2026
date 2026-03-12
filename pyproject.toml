@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "albumentations>=2.0.8",
+    "google-cloud-storage>=3.9.0",
     "jupyterlab>=4.5.6",
     "kaggle==2.0.0",
     "kagglehub>=1.0.0",

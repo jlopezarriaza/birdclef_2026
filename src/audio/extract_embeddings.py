@@ -51,9 +51,16 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="Limit number of files for testing.")
     parser.add_argument("--batch_save", type=int, default=500, help="Save progress every N files.")
     parser.add_argument("--output_name", type=str, default="perch_v2_embeddings.npz")
+    parser.add_argument("--gcs_bucket", type=str, default=None, help="GCS bucket name to upload results.")
     args = parser.parse_args()
 
     raw_dir = "data/raw"
+    # Ensure data is present (Download if missing in cloud container)
+    if not os.path.exists(os.path.join(raw_dir, "train.csv")):
+        print("Data missing. Attempting to download via Kaggle API...")
+        os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
+        os.system(f"unzip -o {raw_dir}/birdclef-2026.zip -d {raw_dir}")
+
     processed_dir = "data/processed"
     os.makedirs(processed_dir, exist_ok=True)
     
@@ -102,6 +109,26 @@ def main():
         os.remove(output_path + ".tmp")
         
     print("Extraction Complete.")
+
+    if args.gcs_bucket:
+        print(f"Uploading results to gs://{args.gcs_bucket}...")
+        try:
+            from google.cloud import storage
+            client = storage.Client()
+            bucket = client.bucket(args.gcs_bucket)
+            
+            # Upload NPZ
+            blob_npz = bucket.blob(f"processed/{args.output_name}")
+            blob_npz.upload_from_filename(output_path)
+            
+            # Upload Mapped CSV
+            csv_path = os.path.join(processed_dir, "train_with_perch_v2.csv")
+            blob_csv = bucket.blob("processed/train_with_perch_v2.csv")
+            blob_csv.upload_from_filename(csv_path)
+            
+            print("Upload successful!")
+        except Exception as e:
+            print(f"Upload failed: {e}")
 
 if __name__ == "__main__":
     main()
