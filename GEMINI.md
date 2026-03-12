@@ -18,7 +18,10 @@ This repository is dedicated to the [Kaggle BirdCLEF 2026 Competition](https://w
     - `models/`: Custom model architectures.
     - `training/`: Training loops and cross-validation logic.
 - `notebooks/`: Prototyping and EDA.
-- `docs/`: Repository documentation and implementation logs (e.g., `IMPLEMENTATION_LOG.md`).
+- `docs/`: Repository documentation and implementation logs.
+    - `COMPETITION_INFO.md`: Rules and evaluation details.
+    - `IMPLEMENTATION_LOG.md`: Running record of progress.
+    - `DATA_PIPELINE.md`: Documentation for processed data artifacts (e.g., embeddings).
 
 ## Building and Running
 
