@@ -26,7 +26,8 @@ This log tracks the development progress, experiments, and architectural decisio
 - **Perch v2:** Attempted multiple methods to load `perch_v2_cpu` (SavedModel, hub.load, signature-based). Encountered persistent `InvalidArgumentError` related to `XlaCallModule` and `vhlo.func_v1` deserialization. This is a known issue when loading models exported with newer StableHLO versions into older TensorFlow environments (TF 2.15 on Intel Mac). 
 - **Fallback to Perch v1:** Reverted to **Perch v1** (`bird-vocalization-classifier`) which is verified stable and efficient on this hardware. We will use v1 for initial EDA and embedding generation to maintain project momentum.
 ### Next Steps
-- [x] Create Exploratory Data Analysis (EDA) notebook.
+- [x] Create Exploratory Data Analysis (EDA) notebook for Perch baseline.
+- [x] Create Spectrogram EDA notebook for Visual Modeling.
 - [x] Implement Perch v2 embedding extraction.
 - [x] Implement Visual Modeling Approach (EfficientNet + Spectrograms).
 - [x] Formulate Multi-Modal Fusion Implementation Plan (`docs/FUSION_MODEL_PLAN.md`).
@@ -34,6 +35,14 @@ This log tracks the development progress, experiments, and architectural decisio
 - [ ] Train a baseline classifier on Perch embeddings.
 - [ ] Train a baseline classifier on Spectrograms (Visual Approach).
 - [ ] Implement Fusion Model based on the new roadmap.
+
+## [2026-03-11] - Visual EDA
+
+### Completed
+- **Spectrogram EDA Notebook:** Created `notebooks/02_spectrogram_eda.ipynb`.
+    - Integrated `SpectrogramGenerator` for visual verification.
+    - Added quality-based comparisons (Rating analysis).
+    - Verified consistency of visual patterns within species.
 
 ## [2026-03-11] - Future Roadmap: Multi-Modal Fusion
 
