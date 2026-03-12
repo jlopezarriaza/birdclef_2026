@@ -34,6 +34,7 @@ RUN uv pip install --system \
     "scikit-learn>=1.6.1" \
     "matplotlib>=3.9.4" \
     "kaggle==2.0.0" \
+    "kagglehub>=1.0.0" \
     "google-cloud-storage" \
     "opencv-python"
 
