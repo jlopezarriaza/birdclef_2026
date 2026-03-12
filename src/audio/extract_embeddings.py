@@ -33,11 +33,12 @@ def worker_init():
     setup_tf_environment()
     model_instance = load_perch_v2()
 
-def process_file_worker(filename, raw_dir):
-    """Worker function to process a single file using the global model_instance."""
+def process_file_worker(filename, raw_dir, model=None):
+    """Worker function to process a single file. Uses provided model or global instance."""
     file_path = os.path.join(raw_dir, "train_audio", filename)
+    target_model = model if model is not None else model_instance
     try:
-        # Load audio (lightweight part)
+        # Load audio
         audio, _ = librosa.load(file_path, sr=32000, duration=5)
         num_samples_needed = 160000
         if len(audio) < num_samples_needed:
@@ -45,7 +46,7 @@ def process_file_worker(filename, raw_dir):
         
         # Inference
         inputs = audio[np.newaxis, :].astype(np.float32)
-        outputs = model_instance(inputs)
+        outputs = target_model(inputs)
         return outputs['embedding'].numpy()[0]
     except Exception as e:
         # Don't print thousands of errors, just return None
@@ -54,7 +55,7 @@ def process_file_worker(filename, raw_dir):
 def main():
     parser = argparse.ArgumentParser(description="Parallel Extraction of Perch v2 embeddings.")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--workers", type=int, default=os.cpu_count())
+    parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--gcs_bucket", type=str, default=None)
     args = parser.parse_args()
 
@@ -62,7 +63,17 @@ def main():
     processed_dir = "data/processed"
     os.makedirs(processed_dir, exist_ok=True)
     
-    # Check for data
+    # 1. Hardware Detection
+    gpus = tf.config.list_physical_devices('GPU')
+    use_gpu = len(gpus) > 0
+    
+    # Default workers: 1 if GPU (to avoid OOM), else cpu_count
+    if args.workers is None:
+        num_workers = 1 if use_gpu else os.cpu_count()
+    else:
+        num_workers = args.workers
+
+    # 2. Check for data
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
         print("Downloading data from Kaggle...")
         os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
@@ -73,17 +84,20 @@ def main():
         train_df = train_df.head(args.limit)
     
     filenames = train_df['filename'].tolist()
-    print(f"Starting parallel extraction: {len(filenames)} files on {args.workers} workers...")
-
-    # Start the Pool
-    # We use 'spawn' for TF safety on some platforms, though 'fork' is default on Linux
-    ctx = mp.get_context('spawn')
-    with ctx.Pool(processes=args.workers, initializer=worker_init) as pool:
-        # Partial function to pass constant raw_dir
-        worker_fn = partial(process_file_worker, raw_dir=raw_dir)
-        
-        # Map filenames to the worker function with a progress bar
-        results = list(tqdm(pool.imap(worker_fn, filenames), total=len(filenames)))
+    
+    if use_gpu:
+        print(f"GPU detected. Running in high-speed sequential mode.")
+        setup_tf_environment()
+        model = load_perch_v2()
+        results = []
+        for f in tqdm(filenames):
+            results.append(process_file_worker(f, raw_dir=raw_dir, model=model))
+    else:
+        print(f"No GPU. Starting parallel extraction on {num_workers} CPU workers...")
+        ctx = mp.get_context('spawn')
+        with ctx.Pool(processes=num_workers, initializer=worker_init) as pool:
+            worker_fn = partial(process_file_worker, raw_dir=raw_dir)
+            results = list(tqdm(pool.imap(worker_fn, filenames), total=len(filenames)))
 
     # Post-process results
     embeddings = []
