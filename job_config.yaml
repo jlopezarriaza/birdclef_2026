@@ -6,6 +6,7 @@ workerPoolSpecs:
     imageUri: us-central1-docker.pkg.dev/birdclef-490003/birdclef-repo/perch-extractor:v2
     args:
     - --gcs_bucket=birdclef-2026-data-birdclef-490003
+    - --workers=16
     env:
     - name: KAGGLE_USERNAME
       value: "juanlopezarriaza"

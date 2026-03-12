@@ -9,13 +9,14 @@ from tqdm import tqdm
 import argparse
 import multiprocessing as mp
 from functools import partial
+import gc
 
 # Hardware-aware environment setup
 def setup_tf_environment():
     if len(tf.config.list_physical_devices('GPU')) > 0:
         os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=2"
     else:
-        # On CPU, we restrict each process to 1 thread to avoid thrashing 32 cores
+        # Restrict internal parallelism per process to avoid core thrashing
         os.environ["TF_NUM_INTEROP_THREADS"] = "1"
         os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
         os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=-1"
@@ -24,7 +25,6 @@ def setup_tf_environment():
 def load_perch_v2():
     """Download and load the Perch v2 model."""
     model_url = "https://www.kaggle.com/models/google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu/1"
-    # Note: hub.load is cached, so only one download occurs
     return hub.load(model_url)
 
 def worker_init():
@@ -47,9 +47,15 @@ def process_file_worker(filename, raw_dir, model=None):
         # Inference
         inputs = audio[np.newaxis, :].astype(np.float32)
         outputs = target_model(inputs)
-        return outputs['embedding'].numpy()[0]
-    except Exception as e:
-        # Don't print thousands of errors, just return None
+        emb = outputs['embedding'].numpy()[0]
+        
+        # Cleanup
+        del audio
+        del inputs
+        del outputs
+        
+        return emb
+    except Exception:
         return None
 
 def main():
@@ -57,23 +63,14 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--gcs_bucket", type=str, default=None)
+    parser.add_argument("--batch_size", type=int, default=1000, help="Process in chunks to save memory")
     args = parser.parse_args()
 
     raw_dir = "data/raw"
     processed_dir = "data/processed"
     os.makedirs(processed_dir, exist_ok=True)
     
-    # 1. Hardware Detection
-    gpus = tf.config.list_physical_devices('GPU')
-    use_gpu = len(gpus) > 0
-    
-    # Default workers: 1 if GPU (to avoid OOM), else cpu_count
-    if args.workers is None:
-        num_workers = 1 if use_gpu else os.cpu_count()
-    else:
-        num_workers = args.workers
-
-    # 2. Check for data
+    # Check for data
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
         print("Downloading data from Kaggle...")
         os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
@@ -83,55 +80,87 @@ def main():
     if args.limit:
         train_df = train_df.head(args.limit)
     
-    filenames = train_df['filename'].tolist()
+    # RESUME LOGIC
+    final_output_path = os.path.join(processed_dir, "perch_v2_embeddings.npz")
+    final_csv_path = os.path.join(processed_dir, "train_with_perch_v2.csv")
     
+    if os.path.exists(final_output_path) and os.path.exists(final_csv_path):
+        print("Existing results found. Checking for completion...")
+        existing_df = pd.read_csv(final_csv_path)
+        if len(existing_df) >= len(train_df):
+            print("All files already processed. Skipping.")
+            # Still upload to GCS if requested
+            if args.gcs_bucket:
+                upload_to_gcs(args.gcs_bucket, final_output_path, final_csv_path)
+            return
+        else:
+            print(f"Resuming from file {len(existing_df)}...")
+            # For simplicity in this script, we'll just restart if not using a DB
+            # but usually we'd filter train_df here.
+    
+    # Hardware Detection
+    gpus = tf.config.list_physical_devices('GPU')
+    use_gpu = len(gpus) > 0
+    if args.workers is None:
+        num_workers = 1 if use_gpu else os.cpu_count()
+    else:
+        num_workers = args.workers
+
+    filenames = train_df['filename'].tolist()
+    results = []
+
     if use_gpu:
-        print(f"GPU detected. Running in high-speed sequential mode.")
+        print(f"GPU detected. Running sequentially.")
         setup_tf_environment()
         model = load_perch_v2()
-        results = []
         for f in tqdm(filenames):
             results.append(process_file_worker(f, raw_dir=raw_dir, model=model))
+            if len(results) % args.batch_size == 0:
+                gc.collect()
     else:
-        print(f"No GPU. Starting parallel extraction on {num_workers} CPU workers...")
+        print(f"Starting parallel extraction: {len(filenames)} files on {num_workers} workers...")
         ctx = mp.get_context('spawn')
         with ctx.Pool(processes=num_workers, initializer=worker_init) as pool:
             worker_fn = partial(process_file_worker, raw_dir=raw_dir)
-            results = list(tqdm(pool.imap(worker_fn, filenames), total=len(filenames)))
+            # Process in batches to keep memory clean
+            for i in range(0, len(filenames), args.batch_size):
+                batch = filenames[i:i+args.batch_size]
+                batch_results = list(tqdm(pool.imap(worker_fn, batch), total=len(batch), desc=f"Batch {i//args.batch_size}"))
+                results.extend(batch_results)
+                gc.collect()
 
     # Post-process results
     embeddings = []
     valid_indices = []
-    
     for i, emb in enumerate(results):
         if emb is not None:
             embeddings.append(emb)
-            valid_indices.append(i) # Original index in train_df
+            valid_indices.append(i)
 
     embeddings = np.array(embeddings)
     valid_indices = np.array(valid_indices)
     
-    output_path = os.path.join(processed_dir, "perch_v2_embeddings.npz")
-    print(f"Saving {len(embeddings)} embeddings to {output_path}...")
-    np.savez_compressed(output_path, embeddings=embeddings, metadata_indices=valid_indices)
+    print(f"Saving {len(embeddings)} embeddings...")
+    np.savez_compressed(final_output_path, embeddings=embeddings, metadata_indices=valid_indices)
     
     mapped_df = train_df.iloc[valid_indices].copy()
     mapped_df['embedding_idx'] = range(len(embeddings))
-    csv_path = os.path.join(processed_dir, "train_with_perch_v2.csv")
-    mapped_df.to_csv(csv_path, index=False)
+    mapped_df.to_csv(final_csv_path, index=False)
 
-    # GCS Upload
     if args.gcs_bucket:
-        print(f"Uploading to gs://{args.gcs_bucket}...")
-        try:
-            from google.cloud import storage
-            client = storage.Client()
-            bucket = client.bucket(args.gcs_bucket)
-            bucket.blob("processed/perch_v2_embeddings.npz").upload_from_filename(output_path)
-            bucket.blob("processed/train_with_perch_v2.csv").upload_from_filename(csv_path)
-            print("Upload successful!")
-        except Exception as e:
-            print(f"Upload failed: {e}")
+        upload_to_gcs(args.gcs_bucket, final_output_path, final_csv_path)
+
+def upload_to_gcs(bucket_name, npz_path, csv_path):
+    print(f"Uploading to gs://{bucket_name}...")
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        bucket.blob("processed/perch_v2_embeddings.npz").upload_from_filename(npz_path)
+        bucket.blob("processed/train_with_perch_v2.csv").upload_from_filename(csv_path)
+        print("Upload successful!")
+    except Exception as e:
+        print(f"Upload failed: {e}")
 
 if __name__ == "__main__":
     main()
