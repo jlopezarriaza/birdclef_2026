@@ -16,16 +16,25 @@ Audio Input (5s @ 32kHz)
 │   └── Output: 1,280-dim (B0) or 1,536-dim (B3) Global Average Pooled Vector
 │
 └── Fusion Layer (Concatenation)
-    └── Feature Vector (~2,560 to 2,816 dimensions)
+    └── Feature Vector (~2,560 to 2,816 dimensions + Metadata)
+        │
+        ├── Branch C: Spatio-Temporal Context (Metadata)
+        │   └── Input: [Latitude, Longitude, Month, Day_of_Year]
+        │   └── Output: Small 32-dim Embedding
         │
         ├── Dense Layer (1,024 units + Dropout)
         ├── Dense Layer (512 units + Dropout)
         └── Output Layer (Softmax for Bird Species)
-```
 
 ## 2. Implementation Strategy
 
 ### Step 1: Feature Alignment
+...
+### Step 4: Temporal Integration
+Leverage the "date" and "location" found in soundscape filenames and `train.csv`.
+- **Month Embedding:** Use a cyclic encoding (Sin/Cos) for the month to represent the seasonal nature of the Pantanal (e.g., December is "close" to January).
+- **Impact:** This helps the model "expect" migratory species only during their known presence windows in the Pantanal.
+
 Ensure both branches process the **exact same 5-second window**.
 - Current scripts already standardize to 32kHz and 160,000 samples.
 - The `SpectrogramGenerator` and `Perch` inference must be synchronized.
