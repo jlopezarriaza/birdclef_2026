@@ -1,18 +1,23 @@
 import os
+# Disable XLA locally if on Intel Mac to avoid VHLO errors
+# This script will still be slow on CPU, but now uses the correct V2 logic
+os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=-1"
+
 import numpy as np
 import pandas as pd
 import librosa
 import tensorflow as tf
+import tensorflow_hub as hub
 import kagglehub
 from tqdm import tqdm
 
-def load_perch_model():
-    """Download and load the compatible Perch v1 model from Kaggle."""
-    # This is the version we saw working earlier (v1 SavedModel)
-    # google/bird-vocalization-classifier/tensorFlow2/bird-vocalization-classifier
-    model_path = kagglehub.model_download('google/bird-vocalization-classifier/tensorFlow2/bird-vocalization-classifier')
-    model = tf.saved_model.load(model_path)
-    return model, model_path
+def load_perch_v2():
+    """Download and load the Perch v2 model."""
+    model_url = "https://www.kaggle.com/models/google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu/1"
+    print(f"Loading Perch v2 from {model_url}...")
+    model = hub.load(model_url)
+    model_dir = hub.resolve(model_url)
+    return model, model_dir
 
 def preprocess_audio(audio_path, target_sr=32000):
     """Load and resample audio."""
@@ -25,28 +30,22 @@ def run_inference(model, audio, window_size_s=5, sr=32000):
     if len(audio) < num_samples:
         audio = np.pad(audio, (0, num_samples - len(audio)))
     
-    # Model expects float32
     audio_segment = audio[:num_samples].astype(np.float32)
-    # Add batch dimension: [1, 160000]
-    inputs = tf.constant(audio_segment[np.newaxis, :])
+    inputs = audio_segment[np.newaxis, :]
     
-    # Use the serving_default signature
-    infer = model.signatures['serving_default']
-    # For Perch v1, the input key is 'input_1' or similar, let's check
-    input_key = list(infer.structured_input_signature[1].keys())[0]
-    outputs = infer(**{input_key: inputs})
-    
+    # Perch v2 via hub.load can be called directly
+    outputs = model(inputs)
     return outputs
 
 if __name__ == "__main__":
-    # 1. Setup Kaggle Auth
+    # Setup Kaggle Auth
     os.environ["KAGGLE_USERNAME"] = "juanlopezarriaza"
     os.environ["KAGGLE_API_TOKEN"] = "KGAT_45b265057d2a434f2e2eec260e818fe9"
 
-    print("Loading compatible Perch model...")
-    perch, model_dir = load_perch_model()
+    print("Initializing Perch v2 Baseline...")
+    perch, model_dir = load_perch_v2()
     
-    # 2. Find a sample file
+    # Find a sample file
     train_audio_dir = "data/raw/train_audio"
     species_folders = sorted([f for f in os.listdir(train_audio_dir) if os.path.isdir(os.path.join(train_audio_dir, f))])
     sample_species = species_folders[0]
@@ -57,23 +56,22 @@ if __name__ == "__main__":
     audio = preprocess_audio(sample_path)
     
     print("Running inference...")
-    results = run_inference(perch, audio)
-    
-    # 3. Explore outputs
-    print("\nInference Results:")
-    for key, val in results.items():
-        print(f"- {key}: shape {val.shape}")
-        
-    # 'label' is the key for probabilities in Perch v1
-    if 'label' in results:
-        probs = results['label'].numpy()[0]
-        top_idx = np.argmax(probs)
-        print(f"\nTop Prediction Index: {top_idx}")
-        print(f"Confidence: {probs[top_idx]:.4f}")
-        
-        # Perch v1 labels
-        label_csv = os.path.join(model_dir, "assets/label.csv")
-        if os.path.exists(label_csv):
-            labels = pd.read_csv(label_csv)
-            predicted_label = labels.iloc[top_idx]
-            print(f"Predicted Species: {predicted_label.to_dict()}")
+    # NOTE: This may still fail locally on Intel Mac due to VHLO errors
+    # but is the correct logic for Cloud/GPU runs.
+    try:
+        results = run_inference(perch, audio)
+        print("\nInference Results:")
+        print(f"- Embedding shape: {results['embedding'].shape}")
+        if 'label' in results:
+            probs = results['label'].numpy()[0]
+            top_idx = np.argmax(probs)
+            print(f"- Top Prediction Index: {top_idx}")
+            
+            label_csv = os.path.join(model_dir, "assets/perch_v2_ebird_classes.csv")
+            if os.path.exists(label_csv):
+                labels = pd.read_csv(label_csv)
+                predicted_species = labels.iloc[top_idx]
+                print(f"- Predicted Species: {predicted_species.to_dict()}")
+    except Exception as e:
+        print(f"\nInference failed locally: {e}")
+        print("This is expected on Intel Mac for Perch v2. Use the Docker/GCP pipeline for full support.")

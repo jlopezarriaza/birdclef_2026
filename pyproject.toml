@@ -20,7 +20,7 @@ dependencies = [
     "scikit-learn>=1.6.1",
     "setuptools<70",
     "soundfile>=0.13.1",
-    "tensorflow==2.15.0",
+    "tensorflow>=2.15.0",
     "tensorflow-hub>=0.16.1",
     "tensorflow-text>=2.15.0",
     "timm>=1.0.25",

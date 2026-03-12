@@ -27,15 +27,19 @@ This log tracks the development progress, experiments, and architectural decisio
 - **Fallback to Perch v1:** Reverted to **Perch v1** (`bird-vocalization-classifier`) which is verified stable and efficient on this hardware. We will use v1 for initial EDA and embedding generation to maintain project momentum.
 
 ### Next Steps
-- [x] Create Exploratory Data Analysis (EDA) notebook for Perch baseline.
-- [x] Implement embedding extraction script (`src/audio/extract_embeddings.py`).
-- [ ] Run embedding extraction for the full training set (Target: `data/processed/perch_v1_embeddings.npz`).
+- [x] Create Exploratory Data Analysis (EDA) notebook.
+- [x] Implement embedding extraction script (`src/audio/extract_embeddings.py`) with Perch v2 support.
+- [x] Create Dockerfile for GCP/Vertex AI cloud extraction.
+- [ ] Run Perch v2 embedding extraction on GCP (Target: `data/processed/perch_v2_embeddings.npz`).
 - [ ] Setup validation strategy (Cross-Validation) based on `train.csv`.
 
-## [2026-03-11] - Data Processing Foundation
+## [2026-03-11] - Cloud & Perch v2 Upgrade
 
 ### Completed
-- **Embedding Extraction:** 
-    - Created `src/audio/extract_embeddings.py` for batch processing of training audio.
-    - Implemented `docs/DATA_PIPELINE.md` to document the extraction process and artifact usage.
-    - Script handles 32kHz resampling, 5s windowing, and Perch v1 inference.
+- **Perch v2 Upgrade:** 
+    - Updated `src/audio/extract_embeddings.py` and `src/inference/perch_baseline.py` to use **Perch v2**.
+    - Model now produces higher-quality embeddings based on EfficientNet-B3.
+- **Dockerization:**
+    - Created `Dockerfile` based on `tensorflow/tensorflow:2.16.1-gpu`.
+    - Integrated `uv` for lightning-fast container builds.
+    - Optimized for Vertex AI Custom Training jobs.
