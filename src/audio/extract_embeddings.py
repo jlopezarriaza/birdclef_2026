@@ -16,28 +16,36 @@ def setup_tf_environment():
     if len(tf.config.list_physical_devices('GPU')) > 0:
         os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=2"
     else:
-        # Restrict internal parallelism per process to avoid core thrashing
         os.environ["TF_NUM_INTEROP_THREADS"] = "1"
         os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
         os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=-1"
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
 
-def load_perch_v2():
-    """Download and load the Perch v2 model."""
-    model_url = "https://www.kaggle.com/models/google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu/1"
-    return hub.load(model_url)
+def load_model_optimized():
+    """Load Perch v2 if possible, fallback to v1 for local dev."""
+    # Check if we are in Docker/Cloud (linux)
+    is_cloud = os.path.exists("/app") or os.environ.get("KAGGLE_CONTAINER_NAME")
+    
+    if is_cloud:
+        print("Cloud environment detected. Loading Perch v2...")
+        model_url = "https://www.kaggle.com/models/google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu/1"
+        return hub.load(model_url)
+    else:
+        print("Local Mac detected. Loading Perch v1 for stability...")
+        model_path = kagglehub.model_download('google/bird-vocalization-classifier/tensorFlow2/bird-vocalization-classifier')
+        return tf.saved_model.load(model_path)
 
 def worker_init():
     """Initializer for multiprocessing pool: loads the model into each process."""
     global model_instance
     setup_tf_environment()
     try:
-        model_instance = load_perch_v2()
+        model_instance = load_model_optimized()
     except Exception as e:
         print(f"WORKER INIT ERROR: {e}")
 
 def process_file_worker(filename, raw_dir, model=None):
-    """Worker function to process a single file. Uses provided model or global instance."""
+    """Worker function to process a single file."""
     file_path = os.path.join(raw_dir, "train_audio", filename)
     target_model = model if model is not None else model_instance
     
@@ -51,9 +59,18 @@ def process_file_worker(filename, raw_dir, model=None):
         if len(audio) < num_samples_needed:
             audio = np.pad(audio, (0, num_samples_needed - len(audio)))
         
-        # Inference
-        inputs = audio[np.newaxis, :].astype(np.float32)
-        outputs = target_model(inputs)
+        # Robust Inference: Try different call methods
+        inputs = tf.constant(audio[np.newaxis, :].astype(np.float32))
+        
+        # 1. Try serving_default signature (Works for hub.load V2 and SavedModel V1)
+        if hasattr(target_model, 'signatures'):
+            infer = target_model.signatures['serving_default']
+            # Find the input key (V1: input_1, V2: inputs)
+            input_key = list(infer.structured_input_signature[1].keys())[0]
+            outputs = infer(**{input_key: inputs})
+        else:
+            # 2. Direct call fallback
+            outputs = target_model(inputs)
         
         if 'embedding' not in outputs:
             return f"ERROR: 'embedding' key missing. Keys: {list(outputs.keys())}"
@@ -70,65 +87,45 @@ def process_file_worker(filename, raw_dir, model=None):
         return f"ERROR: {str(e)}"
 
 def main():
-    parser = argparse.ArgumentParser(description="Parallel Extraction of Perch v2 embeddings.")
+    parser = argparse.ArgumentParser(description="Parallel Extraction of Perch embeddings.")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--gcs_bucket", type=str, default=None)
-    parser.add_argument("--batch_size", type=int, default=1000, help="Process in chunks to save memory")
+    parser.add_argument("--batch_size", type=int, default=1000)
     args = parser.parse_args()
 
     raw_dir = "data/raw"
     processed_dir = "data/processed"
     os.makedirs(processed_dir, exist_ok=True)
     
-    # Check for data
+    # Kaggle Auth
+    if os.getenv("KAGGLE_API_TOKEN") and not os.getenv("KAGGLE_KEY"):
+        os.environ["KAGGLE_KEY"] = os.getenv("KAGGLE_API_TOKEN")
+
+    # Download if missing
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
-        print(f"Data missing in {raw_dir}. Downloading via Kaggle CLI...")
-        
-        # Ensure KAGGLE_KEY is set if KAGGLE_API_TOKEN is provided
-        if os.getenv("KAGGLE_API_TOKEN") and not os.getenv("KAGGLE_KEY"):
-            os.environ["KAGGLE_KEY"] = os.getenv("KAGGLE_API_TOKEN")
+        print(f"Data missing in {raw_dir}. Downloading via CLI...")
+        os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
+        zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
+        if os.path.exists(zip_path):
+            os.system(f"unzip -qo {zip_path} -d {raw_dir}")
+            os.remove(zip_path)
 
-        try:
-            cmd = f"kaggle competitions download -c birdclef-2026 -p {raw_dir}"
-            print(f"Executing: {cmd}")
-            ret = os.system(cmd)
-            print(f"Kaggle download return code: {ret}")
-            
-            # Unzip
-            zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
-            if os.path.exists(zip_path):
-                print(f"Found zip at {zip_path}. Unzipping...")
-                ret_unzip = os.system(f"unzip -qo {zip_path} -d {raw_dir}")
-                print(f"Unzip return code: {ret_unzip}")
-                os.remove(zip_path)
-            else:
-                print(f"ERROR: ZIP file not found at {zip_path}")
-                if os.path.exists(raw_dir):
-                    print(f"Files in {raw_dir}: {os.listdir(raw_dir)}")
-        except Exception as e:
-            print(f"Download/Unzip Process Failed: {e}")
-
-    # Final check before proceeding
-    train_csv_path = os.path.join(raw_dir, "train.csv")
-    if not os.path.exists(train_csv_path):
-        print(f"CRITICAL ERROR: {train_csv_path} still missing. Aborting.")
-        return
-
-    train_df = pd.read_csv(train_csv_path)
-    print(f"Successfully loaded metadata. {len(train_df)} rows found.")
-    
+    train_df = pd.read_csv(os.path.join(raw_dir, "train.csv"))
     if args.limit:
         train_df = train_df.head(args.limit)
     
-    final_output_path = os.path.join(processed_dir, "perch_v2_embeddings.npz")
-    final_csv_path = os.path.join(processed_dir, "train_with_perch_v2.csv")
+    print(f"Successfully loaded {len(train_df)} rows of metadata.")
+    
+    final_output_path = os.path.join(processed_dir, "perch_embeddings.npz")
+    final_csv_path = os.path.join(processed_dir, "train_with_perch.csv")
     
     # Hardware Detection
     gpus = tf.config.list_physical_devices('GPU')
     use_gpu = len(gpus) > 0
     if args.workers is None:
-        num_workers = 1 if use_gpu else os.cpu_count()
+        # Default to safe cloud limits
+        num_workers = 1 if use_gpu else min(16, os.cpu_count())
     else:
         num_workers = args.workers
 
@@ -136,28 +133,21 @@ def main():
     results = []
 
     if use_gpu:
-        print(f"GPU detected. Running sequentially.")
+        print(f"GPU Mode: Sequential processing...")
         setup_tf_environment()
-        model = load_perch_v2()
+        model = load_model_optimized()
         for f in tqdm(filenames):
             res = process_file_worker(f, raw_dir=raw_dir, model=model)
-            if isinstance(res, str) and res.startswith("ERROR"):
-                print(res)
-                results.append(None)
-            else:
-                results.append(res)
-            if len(results) % args.batch_size == 0:
-                gc.collect()
+            results.append(None if (isinstance(res, str) and res.startswith("ERROR")) else res)
+            if len(results) % args.batch_size == 0: gc.collect()
     else:
-        print(f"Starting parallel extraction: {len(filenames)} files on {num_workers} workers...")
+        print(f"CPU Mode: Parallel processing on {num_workers} workers...")
         ctx = mp.get_context('spawn')
         with ctx.Pool(processes=num_workers, initializer=worker_init) as pool:
             worker_fn = partial(process_file_worker, raw_dir=raw_dir)
             for i in range(0, len(filenames), args.batch_size):
                 batch = filenames[i:i+args.batch_size]
                 batch_results = list(tqdm(pool.imap(worker_fn, batch), total=len(batch), desc=f"Batch {i//args.batch_size}"))
-                
-                # Verify batch results and log errors
                 for res in batch_results:
                     if isinstance(res, str) and res.startswith("ERROR"):
                         print(res)
@@ -185,19 +175,16 @@ def main():
     mapped_df.to_csv(final_csv_path, index=False)
 
     if args.gcs_bucket:
-        upload_to_gcs(args.gcs_bucket, final_output_path, final_csv_path)
-
-def upload_to_gcs(bucket_name, npz_path, csv_path):
-    print(f"Uploading to gs://{bucket_name}...")
-    try:
-        from google.cloud import storage
-        client = storage.Client()
-        bucket = client.bucket(bucket_name)
-        bucket.blob("processed/perch_v2_embeddings.npz").upload_from_filename(npz_path)
-        bucket.blob("processed/train_with_perch_v2.csv").upload_from_filename(csv_path)
-        print("Upload successful!")
-    except Exception as e:
-        print(f"Upload failed: {e}")
+        print(f"Uploading to gs://{args.gcs_bucket}...")
+        try:
+            from google.cloud import storage
+            client = storage.Client()
+            bucket = client.bucket(args.gcs_bucket)
+            bucket.blob("processed/perch_embeddings.npz").upload_from_filename(final_output_path)
+            bucket.blob("processed/train_with_perch.csv").upload_from_filename(final_csv_path)
+            print("Upload successful!")
+        except Exception as e:
+            print(f"Upload failed: {e}")
 
 if __name__ == "__main__":
     main()
