@@ -72,24 +72,19 @@ def main():
     
     # Check for data
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
-        print("Data missing. Checking credentials...")
-        user = os.getenv("KAGGLE_USERNAME")
-        key = os.getenv("KAGGLE_KEY")
-        if user and key:
-            print(f"Credentials found for user: {user}")
-        else:
-            print("WARNING: Kaggle credentials missing in environment variables!")
-
-        print("Downloading data from Kaggle via kagglehub...")
+        print("Data missing. Authenticating with new kagglehub method...")
+        
+        # New way: kagglehub.login() picks up KAGGLE_USERNAME and KAGGLE_KEY (or KAGGLE_API_TOKEN)
         try:
             import kagglehub
-            # competition_download handles auth, download, and unzipping
+            kagglehub.login()
+            print("Login successful. Downloading data...")
             kagglehub.competition_download('birdclef-2026', path=raw_dir)
             print("Download and unzip successful.")
         except Exception as e:
-            print(f"Kagglehub download failed: {e}")
-            # Fallback to CLI just in case
-            print("Attempting fallback to Kaggle CLI...")
+            print(f"Kagglehub modern download failed: {e}")
+            # Fallback
+            print("Attempting legacy fallback...")
             os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
             os.system(f"unzip -qo {raw_dir}/birdclef-2026.zip -d {raw_dir}")
 
