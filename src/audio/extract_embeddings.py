@@ -72,54 +72,47 @@ def main():
     
     # Check for data
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
-        print("Data missing. Downloading data via Kaggle CLI...")
+        print(f"Data missing in {raw_dir}. Downloading via Kaggle CLI...")
         
-        # Ensure KAGGLE_KEY is set if KAGGLE_API_TOKEN is provided (for CLI compatibility)
+        # Ensure KAGGLE_KEY is set if KAGGLE_API_TOKEN is provided
         if os.getenv("KAGGLE_API_TOKEN") and not os.getenv("KAGGLE_KEY"):
             os.environ["KAGGLE_KEY"] = os.getenv("KAGGLE_API_TOKEN")
 
         try:
-            # Verified method: CLI download
             cmd = f"kaggle competitions download -c birdclef-2026 -p {raw_dir}"
-            os.system(cmd)
+            print(f"Executing: {cmd}")
+            ret = os.system(cmd)
+            print(f"Kaggle download return code: {ret}")
             
             # Unzip
             zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
             if os.path.exists(zip_path):
-                print("Unzipping data...")
-                os.system(f"unzip -qo {zip_path} -d {raw_dir}")
+                print(f"Found zip at {zip_path}. Unzipping...")
+                ret_unzip = os.system(f"unzip -qo {zip_path} -d {raw_dir}")
+                print(f"Unzip return code: {ret_unzip}")
                 os.remove(zip_path)
-                print("Download and unzip successful.")
             else:
-                print(f"Error: Downloaded file {zip_path} not found.")
+                print(f"ERROR: ZIP file not found at {zip_path}")
+                if os.path.exists(raw_dir):
+                    print(f"Files in {raw_dir}: {os.listdir(raw_dir)}")
         except Exception as e:
-            print(f"Kagglehub modern download failed: {e}")
-            # Fallback
-            print("Attempting legacy fallback...")
-            os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
-            os.system(f"unzip -qo {raw_dir}/birdclef-2026.zip -d {raw_dir}")
+            print(f"Download/Unzip Process Failed: {e}")
 
-    train_df = pd.read_csv(os.path.join(raw_dir, "train.csv"))
+    # Final check before proceeding
+    train_csv_path = os.path.join(raw_dir, "train.csv")
+    if not os.path.exists(train_csv_path):
+        print(f"CRITICAL ERROR: {train_csv_path} still missing. Aborting.")
+        return
+
+    train_df = pd.read_csv(train_csv_path)
+    print(f"Successfully loaded metadata. {len(train_df)} rows found.")
+    
     if args.limit:
         train_df = train_df.head(args.limit)
     
     # RESUME LOGIC
     final_output_path = os.path.join(processed_dir, "perch_v2_embeddings.npz")
     final_csv_path = os.path.join(processed_dir, "train_with_perch_v2.csv")
-    
-    if os.path.exists(final_output_path) and os.path.exists(final_csv_path):
-        print("Existing results found. Checking for completion...")
-        existing_df = pd.read_csv(final_csv_path)
-        if len(existing_df) >= len(train_df):
-            print("All files already processed. Skipping.")
-            # Still upload to GCS if requested
-            if args.gcs_bucket:
-                upload_to_gcs(args.gcs_bucket, final_output_path, final_csv_path)
-            return
-        else:
-            print(f"Resuming from file {len(existing_df)}...")
-            # For simplicity in this script, we'll just restart if not using a DB
-            # but usually we'd filter train_df here.
     
     # Hardware Detection
     gpus = tf.config.list_physical_devices('GPU')
@@ -145,7 +138,6 @@ def main():
         ctx = mp.get_context('spawn')
         with ctx.Pool(processes=num_workers, initializer=worker_init) as pool:
             worker_fn = partial(process_file_worker, raw_dir=raw_dir)
-            # Process in batches to keep memory clean
             for i in range(0, len(filenames), args.batch_size):
                 batch = filenames[i:i+args.batch_size]
                 batch_results = list(tqdm(pool.imap(worker_fn, batch), total=len(batch), desc=f"Batch {i//args.batch_size}"))
