@@ -31,12 +31,19 @@ def worker_init():
     """Initializer for multiprocessing pool: loads the model into each process."""
     global model_instance
     setup_tf_environment()
-    model_instance = load_perch_v2()
+    try:
+        model_instance = load_perch_v2()
+    except Exception as e:
+        print(f"WORKER INIT ERROR: {e}")
 
 def process_file_worker(filename, raw_dir, model=None):
     """Worker function to process a single file. Uses provided model or global instance."""
     file_path = os.path.join(raw_dir, "train_audio", filename)
     target_model = model if model is not None else model_instance
+    
+    if not os.path.exists(file_path):
+        return f"ERROR: File not found: {file_path}"
+
     try:
         # Load audio
         audio, _ = librosa.load(file_path, sr=32000, duration=5)
@@ -47,6 +54,10 @@ def process_file_worker(filename, raw_dir, model=None):
         # Inference
         inputs = audio[np.newaxis, :].astype(np.float32)
         outputs = target_model(inputs)
+        
+        if 'embedding' not in outputs:
+            return f"ERROR: 'embedding' key missing. Keys: {list(outputs.keys())}"
+            
         emb = outputs['embedding'].numpy()[0]
         
         # Cleanup
@@ -55,8 +66,8 @@ def process_file_worker(filename, raw_dir, model=None):
         del outputs
         
         return emb
-    except Exception:
-        return None
+    except Exception as e:
+        return f"ERROR: {str(e)}"
 
 def main():
     parser = argparse.ArgumentParser(description="Parallel Extraction of Perch v2 embeddings.")
@@ -110,7 +121,6 @@ def main():
     if args.limit:
         train_df = train_df.head(args.limit)
     
-    # RESUME LOGIC
     final_output_path = os.path.join(processed_dir, "perch_v2_embeddings.npz")
     final_csv_path = os.path.join(processed_dir, "train_with_perch_v2.csv")
     
@@ -130,7 +140,12 @@ def main():
         setup_tf_environment()
         model = load_perch_v2()
         for f in tqdm(filenames):
-            results.append(process_file_worker(f, raw_dir=raw_dir, model=model))
+            res = process_file_worker(f, raw_dir=raw_dir, model=model)
+            if isinstance(res, str) and res.startswith("ERROR"):
+                print(res)
+                results.append(None)
+            else:
+                results.append(res)
             if len(results) % args.batch_size == 0:
                 gc.collect()
     else:
@@ -141,7 +156,14 @@ def main():
             for i in range(0, len(filenames), args.batch_size):
                 batch = filenames[i:i+args.batch_size]
                 batch_results = list(tqdm(pool.imap(worker_fn, batch), total=len(batch), desc=f"Batch {i//args.batch_size}"))
-                results.extend(batch_results)
+                
+                # Verify batch results and log errors
+                for res in batch_results:
+                    if isinstance(res, str) and res.startswith("ERROR"):
+                        print(res)
+                        results.append(None)
+                    else:
+                        results.append(res)
                 gc.collect()
 
     # Post-process results
