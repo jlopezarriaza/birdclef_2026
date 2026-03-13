@@ -72,13 +72,17 @@ def main():
     
     # Check for data
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
-        print("Data missing. Authenticating with new kagglehub method...")
+        print("Data missing. Authenticating with kagglehub...")
         
-        # New way: kagglehub.login() picks up KAGGLE_USERNAME and KAGGLE_KEY (or KAGGLE_API_TOKEN)
+        # Ensure KAGGLE_KEY is set if KAGGLE_API_TOKEN is provided (for non-interactive)
+        if os.getenv("KAGGLE_API_TOKEN") and not os.getenv("KAGGLE_KEY"):
+            os.environ["KAGGLE_KEY"] = os.getenv("KAGGLE_API_TOKEN")
+
         try:
             import kagglehub
+            # login() will now be non-interactive because KAGGLE_USERNAME and KAGGLE_KEY are set
             kagglehub.login()
-            print("Login successful. Downloading data...")
+            print("Authentication successful. Downloading data...")
             kagglehub.competition_download('birdclef-2026', path=raw_dir)
             print("Download and unzip successful.")
         except Exception as e:
