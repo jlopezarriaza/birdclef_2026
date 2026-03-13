@@ -1,5 +1,6 @@
 # Data and Models
 data/
+!data/models/birdnet_v2.4.tflite
 models/
 outputs/
 

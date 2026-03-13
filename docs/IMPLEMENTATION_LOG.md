@@ -85,3 +85,35 @@ This log tracks the development progress, experiments, and architectural decisio
     - Finalized automatic upload logic to move results from Vertex AI ephemeral storage to `gs://birdclef-2026-data-birdclef-490003`.
 - **Documentation:**
     - Updated `CLOUD_COMPUTE.md` and `DATA_PIPELINE.md` with parallelization and GPU-ready instructions.
+
+## [2026-03-12] - Multi-Model Extraction & Vertex AI Stabilization
+
+### Completed
+- **Multi-Model Pipeline:**
+    - Established independent extraction workflows for **Perch v1**, **Perch v2**, and **BirdNET**.
+    - Created a master deployment script `deploy_all.sh` to launch tasks on Vertex AI `n1-standard-32` instances.
+    - Implemented GCS auto-upload for all models to `gs://birdclef-2026-data-birdclef-490003/processed/`.
+- **Perch v1 Stabilization:**
+    - Created `src/audio/extract_embeddings_v1.py`.
+    - Successfully ran locally and on Vertex AI.
+    - Resolved race conditions in model downloading during parallel initialization.
+- **BirdNET Integration:**
+    - Integrated **BirdNET-Analyzer V2.4** (Global 6K species).
+    - Created `src/audio/extract_embeddings_birdnet.py`.
+    - Resolved model download issues by baking the `.tflite` model directly into the Docker image (`Dockerfile.birdnet`).
+    - Verified extraction of 6,522-dimensional feature vectors.
+- **BirdNET EDA:**
+    - Created `notebooks/04_birdnet_embeddings_eda.ipynb`.
+    - Implemented PCA-preconditioned t-SNE for visualizing the high-dimensional BirdNET space.
+- **Perch v2 Cloud Optimization:**
+    - Upgraded cloud environment to **TensorFlow 2.18.0** to resolve StableHLO/XLA deserialization errors (`attribute code: 22`).
+    - Implemented dynamic input signature detection in `src/audio/extract_embeddings_v2.py`.
+    - Transitioned to **TFLite** path for Perch v2 to bypass VHLO/SavedModel version mismatches on CPU.
+
+### Trials & Observations
+- **XLA Deserialization:** Perch v2 SavedModel exhibits strict forward-compatibility requirements. Vertex AI CPU environments require matching StableHLO versions found in TF 2.17+.
+- **TFLite Stability:** TFLite proved significantly more robust than SavedModel for cross-platform (Mac vs. Cloud Linux) consistency.
+- **Feature Space Expansion:** Combined feature vector (Perch 1 + Perch 2 + BirdNET + Visual) now exceeds 10,000 dimensions, providing a rich signal for the final classifier.
+
+### Reversions
+- **Reverted Local Environment:** Reverted `pyproject.toml` to stable baseline (TF 2.15.0, Numpy < 2.0) after `perch-hoplite` attempt failed due to Intel Mac wheel availability for TF 2.20.0.

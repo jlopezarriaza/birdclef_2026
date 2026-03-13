@@ -13,27 +13,24 @@ import gc
 
 # Hardware-aware environment setup
 def setup_tf_environment():
+    # Force XLA OFF for CPU stability unless specifically requested
+    os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=-1"
+    
     if len(tf.config.list_physical_devices('GPU')) > 0:
-        os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=2"
+        print("GPU detected. Enabling some optimizations...")
+        # Note: If we had a GPU, we might want XLA, but for now we stick to CPU.
     else:
+        # Optimizations for CPU inference (Vertex n1-standard-32)
         os.environ["TF_NUM_INTEROP_THREADS"] = "1"
         os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
-        os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=-1"
-        os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2" 
 
 def load_model_optimized():
-    """Load Perch v2 if possible, fallback to v1 for local dev."""
-    # Check if we are in Docker/Cloud (linux)
-    is_cloud = os.path.exists("/app") or os.environ.get("KAGGLE_CONTAINER_NAME")
-    
-    if is_cloud:
-        print("Cloud environment detected. Loading Perch v2...")
-        model_url = "https://www.kaggle.com/models/google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu/1"
-        return hub.load(model_url)
-    else:
-        print("Local Mac detected. Loading Perch v1 for stability...")
-        model_path = kagglehub.model_download('google/bird-vocalization-classifier/tensorFlow2/bird-vocalization-classifier')
-        return tf.saved_model.load(model_path)
+    """Load stable Perch v1 (v4). Much more reliable on CPU than v2."""
+    print("Loading stable Perch v1 (version 4) for CPU inference...")
+    # Perch v1 (v4) is highly compatible and robust
+    model_path = kagglehub.model_download('google/bird-vocalization-classifier/tensorFlow2/bird-vocalization-classifier/4')
+    return tf.saved_model.load(model_path)
 
 def worker_init():
     """Initializer for multiprocessing pool: loads the model into each process."""

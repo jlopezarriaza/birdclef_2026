@@ -1,5 +1,5 @@
-# Use official TensorFlow CPU base image (2.16.1 is stable for Cloud SavedModels)
-FROM tensorflow/tensorflow:2.16.1
+# Use official TensorFlow CPU base image
+FROM tensorflow/tensorflow:2.15.0
 
 # Install essential system tools
 RUN apt-get update && apt-get install -y \
@@ -19,8 +19,8 @@ WORKDIR /app
 # Copy project configuration
 COPY pyproject.toml uv.lock ./
 
-# Match TF version for dependencies
-RUN pip install tensorflow-hub tensorflow-text==2.16.1
+# Install matching versions
+RUN pip install tensorflow-hub tensorflow-text==2.15.0
 
 # Install other dependencies
 RUN uv pip install --system \
@@ -40,9 +40,9 @@ RUN uv pip install --system \
 COPY src/ ./src/
 
 # Environment variables
-ENV TF_XLA_FLAGS="--tf_xla_auto_jit=1"
+ENV TF_XLA_FLAGS="--tf_xla_auto_jit=-1"
 ENV TF_CPP_MIN_LOG_LEVEL="2"
 ENV PYTHONUNBUFFERED=1
 
-# Default command: run embedding extraction for Perch v2 (Cloud SavedModel Optimized)
-ENTRYPOINT ["python3", "src/audio/extract_embeddings_v2.py"]
+# Default command: run embedding extraction for Perch v1
+ENTRYPOINT ["python3", "src/audio/extract_embeddings_v1.py"]
