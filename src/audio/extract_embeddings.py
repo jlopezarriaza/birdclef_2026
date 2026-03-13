@@ -72,19 +72,26 @@ def main():
     
     # Check for data
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
-        print("Data missing. Authenticating with environment variables...")
+        print("Data missing. Downloading data via Kaggle CLI...")
         
-        # Ensure KAGGLE_KEY is set if KAGGLE_API_TOKEN is provided (for fallback compatibility)
+        # Ensure KAGGLE_KEY is set if KAGGLE_API_TOKEN is provided (for CLI compatibility)
         if os.getenv("KAGGLE_API_TOKEN") and not os.getenv("KAGGLE_KEY"):
             os.environ["KAGGLE_KEY"] = os.getenv("KAGGLE_API_TOKEN")
 
         try:
-            import kagglehub
-            # We skip kagglehub.login() because it can trigger interactive prompts.
-            # kagglehub.competition_download() will automatically use the environment variables.
-            print("Downloading data via kagglehub...")
-            kagglehub.competition_download('birdclef-2026', path=raw_dir)
-            print("Download and unzip successful.")
+            # Verified method: CLI download
+            cmd = f"kaggle competitions download -c birdclef-2026 -p {raw_dir}"
+            os.system(cmd)
+            
+            # Unzip
+            zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
+            if os.path.exists(zip_path):
+                print("Unzipping data...")
+                os.system(f"unzip -qo {zip_path} -d {raw_dir}")
+                os.remove(zip_path)
+                print("Download and unzip successful.")
+            else:
+                print(f"Error: Downloaded file {zip_path} not found.")
         except Exception as e:
             print(f"Kagglehub modern download failed: {e}")
             # Fallback
