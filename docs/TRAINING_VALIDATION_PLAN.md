@@ -9,9 +9,9 @@
 - **Metric Tracking:** Track both "Overall" and "Per-Site" performance to ensure the model generalizes across the Pantanal.
 
 ## 2. Training Workflow
-1. **Fold Training:** Split the 35k recordings into 5 folds, ensuring no species is missing from any validation set.
-2. **Loss Function:** Categorical Cross-Entropy (CCE) or Binary Cross-Entropy (BCE) for multi-label support (handling `secondary_labels`).
-3. **Threshold Optimization:** Since we submit probabilities (0.0 to 1.0), we will optimize the decision threshold for each species to maximize F1-score on validation data.
+1. **Multi-Hot Label Encoder:** Create a persistent mapping of all 234 species IDs. For each sample, the target is a vector of 234 binary values representing the union of primary and secondary labels.
+2. **Loss Function:** **Binary Cross-Entropy (BCE)**.
+3. **Data Balancing:** Since soundscapes contain the 28 "missing" species, training must include the sliced soundscape windows to ensure the model sees all 234 classes.
 
 ## 3. Regularization & Stabilization
 - **Learning Rate Scheduler:** Use `ReduceLROnPlateau` (already implemented) and potentially a `CosineAnnealing` scheduler for smoother convergence.

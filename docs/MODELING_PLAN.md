@@ -1,7 +1,9 @@
 # Modeling Strategy Plan - BirdCLEF 2026
 
 ## 1. Deep Learning Fusion Model (Heavyweight)
-Current 3-branch architecture (EfficientNetB0 + Perch v1 + Metadata). This model is powerful but computationally expensive for 90-minute CPU-only inference.
+Current 3-branch architecture (EfficientNetB0 + Perch v1 + Metadata).
+- **Expansion (Multi-Label Output):** Change the final layer from 206 neurons (softmax) to **234 neurons (sigmoid)** to support multi-label classification and all competition species.
+- **Loss Function:** Transition from `CategoricalCrossentropy` to **`BinaryCrossentropy`** to correctly handle samples with multiple species (Primary + Secondary labels).
 - **Improvement:** Test EfficientNetB3 or B4 for more complex visual patterns.
 - **Improvement:** Switch to Perch v2 (requires version compatibility fixes).
 - **Expansion (High-Dim Branch):** Add a 4th branch for **BirdNET Embeddings (6,522-dim)**. This will allow the fusion head to learn from both Google's Bioacoustic knowledge (Perch) and the taxonomic depth of BirdNET.

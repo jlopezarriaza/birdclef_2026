@@ -1,11 +1,16 @@
 # Data Strategy Plan - BirdCLEF 2026
 
 ## 1. Data Sources
-- **Primary:** `train_audio/` (35,549 curated short recordings).
-- **Validation/OOD:** `train_soundscapes/` (1-minute continuous field recordings).
-- **External:** Potential use of Xeno-canto if specific species are under-represented.
+- **Primary (Clean):** `train_audio/` (35,549 curated short recordings).
+- **Secondary (Noisy):** `train_soundscapes/` (1-minute continuous field recordings).
+    - **Soundscape Slicing:** To utilize this data for training, we will slice 1-minute files into twelve 5-second windows aligned with `train_soundscapes_labels.csv`.
+- **Master Species List:** We will maintain a fixed registry of all **234 unique species IDs** found across both `train.csv` and `train_soundscapes_labels.csv`.
 
-## 2. Feature Engineering
+## 2. Multi-Label Engineering
+- **Secondary Labels:** The `secondary_labels` field in `train.csv` will be converted from a string list to a multi-hot encoded vector.
+- **Combined Targets:** Each training sample will have a target vector where:
+    - `primary_label` = 1.0
+    - `secondary_labels` = 1.0 (or a weighted value like 0.5 to indicate background presence)
 - **Audio Embeddings:** 
     - **Perch v1 (1,280-dim):** Fast, stable baseline.
     - **Perch v2 (1,536-dim):** Higher quality, requires TFLite or TF 2.17+ in cloud.
