@@ -170,3 +170,28 @@ This log tracks the development progress, experiments, and architectural decisio
 - [ ] Implement a "Late Fusion" ensemble for comparison (averaging probabilities).
 - [ ] Integrate BirdNET embeddings into the fusion architecture (High-dim branch).
 - [ ] Develop a dedicated validation script for `train_soundscapes`.
+
+## [2026-03-14] - Shared Infrastructure: Master Registry
+
+### Completed
+- **[SHR-101] Master 234-Species Registry:**
+    - Created `src/training/create_master_registry.py`.
+    - Extracted 234 unique species IDs from `train.csv` (primary + secondary) and `train_soundscapes_labels.csv`.
+    - Verified the count matches exactly 234 as per requirements.
+    - Saved alphabetized mapping to `data/processed/species_registry.json`.
+    - Updated `docs/IMPLEMENTATION_ROADMAP.md` and `docs/HANDOFF_NOTES.md`.
+- **[SHR-102] Dense Feature Scan:**
+    - Created `src/audio/extract_embeddings_soundscapes.py`.
+    - Implemented high-density feature extraction using Perch v1.
+    - Added 1s-stride sliding window (56 overlapping 5-second windows per 60s soundscape file).
+    - Output saved as compressed `.npz` files (shape: `(56, 1280)`) for each soundscape.
+    - CPU optimized implementation with multiprocessing.
+- **[SHR-102-S] Soundscape Spectrogram Scan:**
+    - Created `src/audio/precalculate_soundscape_spectrograms.py`.
+    - Modified `src/audio/spectrograms.py` to support generating from audio arrays directly.
+    - Implemented 1s-stride Mel-spectrogram generation (224x224 RGB PNGs).
+    - CPU optimized with multiprocessing.
+
+### Next Steps
+- [ ] Implement **[SHR-103] GroupKFold Registry**: Map soundscape slices to parent file IDs to prevent data leakage.
+- [ ] Implement **[SHR-104] Noise Harvesting**: Extract "Pure Noise" banks from unlabeled soundscape segments.

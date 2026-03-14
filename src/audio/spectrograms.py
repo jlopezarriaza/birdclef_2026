@@ -34,8 +34,20 @@ class SpectrogramGenerator:
         try:
             # 1. Load and Pad/Crop
             audio, _ = librosa.load(audio_path, sr=self.sr, duration=self.duration)
+            return self.generate_from_audio(audio)
+        except Exception as e:
+            print(f"Error generating spectrogram for {audio_path}: {e}")
+            return None
+
+    def generate_from_audio(self, audio):
+        """
+        Generates a normalized RGB spectrogram image from a numpy array.
+        """
+        try:
             if len(audio) < self.samples:
                 audio = np.pad(audio, (0, self.samples - len(audio)))
+            elif len(audio) > self.samples:
+                audio = audio[:self.samples]
             
             # 2. Generate Mel Spectrogram
             melspec = librosa.feature.melspectrogram(
@@ -67,7 +79,7 @@ class SpectrogramGenerator:
             
             return img_rgb
         except Exception as e:
-            print(f"Error generating spectrogram for {audio_path}: {e}")
+            print(f"Error generating spectrogram: {e}")
             return None
 
 def save_spectrogram(img, output_path):

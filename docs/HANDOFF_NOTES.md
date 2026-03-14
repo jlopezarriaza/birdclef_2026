@@ -3,25 +3,21 @@
 **Current Status (March 14, 2026):**
 - **V1 Model:** A 3-branch Fusion Model (EfficientNetB0 + Perch v1 + Metadata) is currently training locally on curated `train_audio`.
 - **Performance:** Reached ~0.98 AUC on clean data by Epoch 9. Expected to struggle on noisy soundscapes.
+- **Infrastructure:** [SHR-101] Master Registry implemented (234 species).
 - **Repository:** Cleaned and reorganized. Core logic in `src/`, infrastructure in `infrastructure/`.
 
 ## 1. The Core Strategy: "Unified 5s Resolution"
-The goal is to bridge the domain gap between clean clips and noisy field recordings by standardizing all training data to high-quality 5-second windows at the audio level.
-
-### Key Technical Decisions:
-- **Multi-Label:** Move from Softmax/CCE to **Sigmoid/BinaryCrossentropy** to handle multiple birds in soundscapes.
-- **Output Classes:** Fixed registry of **234 species IDs** (unifies short audio and soundscape labels).
-- **Vocalization Centering:** Using the V1 model to "search" for the best 5s window within 1-minute soundscapes (dense scan with 1s stride).
-- **Contextual Stitching:** Padding short curated audio with **real Pantanal noise** harvested from empty soundscape windows instead of using zero-padding.
+... (rest of section 1) ...
 
 ## 2. Shared Synergies (Non-Redundant Path)
 Follow the execution order in `docs/IMPLEMENTATION_ROADMAP.md`:
 
 ### Phase 1: Shared Infrastructure (Immediate Priority)
-1. **[SHR-101] Master Registry:** Create mapping for all 234 species IDs.
-2. **[SHR-102] Dense Scan:** Run 1s-stride feature extraction on `train_soundscapes`.
-3. **[SHR-103] GroupKFold:** Map soundscapes to parent IDs to prevent leakage.
-4. **[SHR-104] Noise Harvesting:** Extract 5s "pure noise" segments.
+1. **[SHR-101] Master Registry:** COMPLETED. Fixed JSON mapping at `data/processed/species_registry.json`.
+2. **[SHR-102] Dense Scan:** COMPLETED. High-density Perch v1 embeddings extracted for soundscapes.
+3. **[SHR-102-S] Soundscape Spectrograms:** COMPLETED. 224x224 RGB spectrograms pre-calculated for all soundscapes (1s stride).
+4. **[SHR-103] GroupKFold:** (NEXT) Map soundscapes to parent IDs to prevent leakage.
+5. **[SHR-104] Noise Harvesting:** Extract 5s "pure noise" segments.
 
 ### Phase 2: Refinement & Augmentation
 - Implement **Branch A (5s Unified)** for high-fidelity refinement.
