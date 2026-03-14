@@ -19,8 +19,20 @@ def main():
     soundscapes_df = pd.read_csv(soundscapes_csv_path)
 
     # Extract unique labels from train.csv
-    train_labels = set(train_df['primary_label'].unique())
-    print(f"Found {len(train_labels)} unique species in train.csv.")
+    train_primary_labels = set(train_df['primary_label'].unique())
+    print(f"Found {len(train_primary_labels)} unique primary species in train.csv.")
+
+    # Extract secondary labels from train.csv (they are list strings like "['species1', 'species2']")
+    import ast
+    train_secondary_labels = set()
+    for labels_str in train_df['secondary_labels'].dropna():
+        try:
+            labels = ast.literal_eval(labels_str)
+            if isinstance(labels, list):
+                train_secondary_labels.update(labels)
+        except (ValueError, SyntaxError):
+            continue
+    print(f"Found {len(train_secondary_labels)} unique secondary species in train.csv.")
 
     # Extract unique labels from train_soundscapes_labels.csv
     # The primary_label column can contain semicolon-separated values
@@ -30,14 +42,10 @@ def main():
         labels = [label.strip() for label in labels_str.split(';')]
         soundscape_labels.update(labels)
     
-    # Exclude 'nocall' if present, as it is usually not a species ID, 
-    # but let's see if the competition includes it in the 234. Wait, 
-    # the prompt says "extract all unique species IDs... verify combined unique count is exactly 234 species".
-    # I should check what is in the labels.
     print(f"Found {len(soundscape_labels)} unique labels in soundscapes.")
 
-    # Combine
-    all_labels = train_labels.union(soundscape_labels)
+    # Combine all
+    all_labels = train_primary_labels.union(train_secondary_labels).union(soundscape_labels)
     
     # If 'nocall' is present and the count is 235, we might need to remove it.
     # Let's not make assumptions until we see the count.
