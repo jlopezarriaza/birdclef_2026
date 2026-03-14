@@ -62,8 +62,23 @@
 
 ---
 
-## [BIR-106] Implementation of Multi-Label GroupKFold
+## [BIR-107] High-Resolution 1s Segment Stitching (Alternative Strategy)
+- **Type:** Story
+- **Priority:** High
+- **Description:** Instead of picking one 5s window, we slice soundscapes into **1-second segments**. 
+- **Stitching Logic:**
+    - We identify all 1s segments where a species is active.
+    - We "stitch" 5 consecutive 1s segments to form a 5s training sample.
+    - **Sliding Stitch:** We slide this 5s "window of segments" with a 1s step.
+- **Goal:** This creates a massive augmentation of the soundscape data (up to 12x more samples than grid slicing) and ensures the model learns to identify species regardless of where they appear in the 5s window.
+- **Deliverables:**
+    - Script: `src/audio/segment_and_stitch.py`
+    - Metadata: `data/processed/stitched_1s_metadata.csv`
+
+---
+
+## [BIR-108] Implementation of Multi-Label GroupKFold
 - **Type:** Task
 - **Priority:** High
 - **Description:** Ensure that the 1-minute files are never split across train/val folds.
-- **Constraints:** All 5s slices from `BC2026_Train_0039` must be either 100% Training or 100% Validation.
+- **Constraints:** All segments (whether 5s or 1s-stitched) from `BC2026_Train_0039` must be either 100% Training or 100% Validation to prevent leakage.
