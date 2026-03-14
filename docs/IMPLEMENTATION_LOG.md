@@ -198,5 +198,12 @@ This log tracks the development progress, experiments, and architectural decisio
     - Generated a multi-label encoded registry at `data/processed/soundscape_kfold_registry.csv` with 234 species columns.
     - Verified fold distribution and label density (approx. 4.2 species per window).
 
+- **[SHR-104] Noise Harvesting:**
+    - Created `src/audio/harvest_noise.py`.
+    - Identified "No-Call" segments in soundscapes by analyzing gaps in `data/raw/train_soundscapes_labels.csv`.
+    - Extracted 127,157 five-second clips (32 kHz, mono, .wav) to `data/processed/noise_bank/` (~38GB).
+    - Generated a metadata registry at `data/processed/noise_bank_registry.csv` linking each noise clip to its parent soundscape and timestamp.
+    - Verified that clips cover nearly all of the 10,658 soundscapes, excluding 59 files with continuous labeling.
+
 ### Next Steps
-- [ ] Implement **[SHR-104] Noise Harvesting**: Extract "Pure Noise" banks from unlabeled soundscape segments.
+- [ ] TBD.
