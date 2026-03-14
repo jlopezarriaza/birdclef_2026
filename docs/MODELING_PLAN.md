@@ -4,6 +4,7 @@
 Current 3-branch architecture (EfficientNetB0 + Perch v1 + Metadata). This model is powerful but computationally expensive for 90-minute CPU-only inference.
 - **Improvement:** Test EfficientNetB3 or B4 for more complex visual patterns.
 - **Improvement:** Switch to Perch v2 (requires version compatibility fixes).
+- **Expansion (High-Dim Branch):** Add a 4th branch for **BirdNET Embeddings (6,522-dim)**. This will allow the fusion head to learn from both Google's Bioacoustic knowledge (Perch) and the taxonomic depth of BirdNET.
 
 ## 2. Lightweight Ensemble (Efficient Alternative)
 To meet Kaggle's 90-minute CPU constraint, we will develop a model that skips on-the-fly spectrogram generation during inference.
