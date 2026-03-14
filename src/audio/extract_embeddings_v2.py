@@ -1,9 +1,11 @@
 import os
+import json
 import warnings
 import gc
 import argparse
 import multiprocessing as mp
 from functools import partial
+from pathlib import Path
 
 # Optimizations for CPU Inference
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -23,40 +25,56 @@ import tensorflow_text as tf_text
 import kagglehub
 from tqdm import tqdm
 
+def setup_kaggle_auth():
+    """Ensure kaggle.json exists for the CLI tool."""
+    user = os.getenv("KAGGLE_USERNAME")
+    key = os.getenv("KAGGLE_KEY") or os.getenv("KAGGLE_API_TOKEN")
+    
+    if user and key:
+        print(f"🛠️ Setting up Kaggle credentials for user: {user}")
+        kaggle_path = Path.home() / ".kaggle"
+        kaggle_path.mkdir(exist_ok=True)
+        config_file = kaggle_path / "kaggle.json"
+        
+        with open(config_file, "w") as f:
+            json.dump({"username": user, "key": key}, f)
+        
+        os.chmod(config_file, 0o600)
+        # Also set env vars just in case
+        os.environ["KAGGLE_USERNAME"] = user
+        os.environ["KAGGLE_KEY"] = key
+        return True
+    
+    print("⚠️ No Kaggle credentials found in environment.")
+    return False
+
 def load_model_v2_cpu():
-    """Load the CPU-specific variant of Perch v2."""
     model_slug = 'google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu/1'
     print(f"🔍 Loading Perch v2 CPU (1536-dim) from {model_slug}...")
     model_path = kagglehub.model_download(model_slug)
     return tf.saved_model.load(model_path)
 
 def worker_init():
-    """Initializer for each worker process."""
     global model_instance
     try:
-        # Each worker loads its own instance
         model_instance = load_model_v2_cpu()
     except Exception as e:
         print(f"❌ WORKER INIT ERROR: {e}")
 
 def process_file_worker(filename, raw_dir):
-    """Worker function to process a single audio file."""
     file_path = os.path.join(raw_dir, "train_audio", filename)
     if not os.path.exists(file_path): 
         return f"ERROR: Missing {file_path}"
 
     try:
-        # Load exactly 5 seconds at 32kHz
         audio, _ = librosa.load(file_path, sr=32000, duration=5)
         if len(audio) < 160000:
             audio = np.pad(audio, (0, 160000 - len(audio)))
         
-        # Inference
         inputs = audio[np.newaxis, :].astype(np.float32)
         infer = model_instance.signatures['serving_default']
         outputs = infer(inputs=tf.constant(inputs))
         
-        # Extract embedding
         if 'embedding' in outputs:
             return outputs['embedding'].numpy()[0]
         else:
@@ -66,35 +84,42 @@ def process_file_worker(filename, raw_dir):
         return f"ERROR: {str(e)}"
 
 def main():
-    parser = argparse.ArgumentParser(description="Full Perch v2 Embedding Extraction")
+    parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--workers", type=int, default=24) # Reduced from 32 to avoid OOM
+    parser.add_argument("--workers", type=int, default=24)
     parser.add_argument("--batch_size", type=int, default=1000)
     parser.add_argument("--gcs_bucket", type=str, default=None)
     args = parser.parse_args()
 
-    # Check for Kaggle Credentials early
-    if not os.getenv("KAGGLE_USERNAME") or not os.getenv("KAGGLE_KEY"):
-        print("❌ CRITICAL: KAGGLE_USERNAME or KAGGLE_KEY not set in environment.")
-        return
+    setup_kaggle_auth()
 
     raw_dir, processed_dir = "data/raw", "data/processed"
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(processed_dir, exist_ok=True)
 
     # 1. Download Data if missing
-    if not os.path.exists(os.path.join(raw_dir, "train.csv")):
+    train_csv = os.path.join(raw_dir, "train.csv")
+    if not os.path.exists(train_csv):
         print("🚀 Data missing. Downloading via Kaggle CLI...")
-        os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
+        # Check if we can run kaggle
+        ret = os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
+        if ret != 0:
+            print("❌ FAILED to download data from Kaggle. Check credentials and competition rules.")
+            return
+
         zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
         if os.path.exists(zip_path):
+            print("📦 Unzipping data...")
             os.system(f"unzip -qo {zip_path} -d {raw_dir}")
             os.remove(zip_path)
     
-    train_df = pd.read_csv(os.path.join(raw_dir, "train.csv"))
+    if not os.path.exists(train_csv):
+        print(f"❌ CRITICAL: {train_csv} not found after download attempt.")
+        return
+    
+    train_df = pd.read_csv(train_csv)
     if args.limit: train_df = train_df.head(args.limit)
     
-    # 2. Pre-warm model cache in main process (Faster worker init)
     print("Pre-warming model cache in main process...")
     load_model_v2_cpu()
     
@@ -104,7 +129,6 @@ def main():
     results = []
     ctx = mp.get_context('spawn')
     
-    # Using 'spawn' context is more robust for TF
     with ctx.Pool(processes=args.workers, initializer=worker_init) as pool:
         for i in range(0, len(filenames), args.batch_size):
             batch = filenames[i:i+args.batch_size]
@@ -113,7 +137,6 @@ def main():
             results.extend(batch_results)
             gc.collect()
 
-    # 3. Process and Save
     valid_idx = [i for i, r in enumerate(results) if not (isinstance(r, str) and r.startswith("ERROR"))]
     valid_results = [results[i] for i in valid_idx]
     
@@ -128,7 +151,6 @@ def main():
 
         if args.gcs_bucket:
             print(f"📤 Uploading to gs://{args.gcs_bucket}...")
-            # Using -m for multi-threaded upload
             os.system(f"gsutil -m cp {output_path} gs://{args.gcs_bucket}/processed/perch_v2_embeddings.npz")
             os.system(f"gsutil -m cp {csv_path} gs://{args.gcs_bucket}/processed/train_with_perch_v2.csv")
     else:

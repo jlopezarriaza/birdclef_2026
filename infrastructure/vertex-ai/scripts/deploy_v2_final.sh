@@ -1,9 +1,10 @@
 #!/bin/bash
 set -e
 
+# Run from project root
 IMAGE_URI="us-central1-docker.pkg.dev/birdclef-490003/birdclef-repo/perch-extractor:v2-final"
 REGION="us-central1"
-CONFIG_FILE="job_config_v2.yaml"
+CONFIG_FILE="infrastructure/vertex-ai/configs/job_config_v2.yaml"
 JOB_NAME="perch-v2-full-extraction-$(date +%Y%m%d-%H%M)"
 
 # 1. Update cloudbuild to use the new tag
@@ -33,3 +34,4 @@ gcloud ai custom-jobs create \
 echo "----------------------------------------------------------"
 echo "✅ Done! Full extraction is now running."
 echo "Logs: https://console.cloud.google.com/vertex-ai/training/custom-jobs?project=birdclef-490003"
+rm cloudbuild_final.yaml
