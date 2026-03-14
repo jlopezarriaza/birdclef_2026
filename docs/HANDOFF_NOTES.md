@@ -15,27 +15,27 @@ The goal is to bridge the domain gap between clean clips and noisy field recordi
 - **Contextual Stitching:** Padding short curated audio with **real Pantanal noise** harvested from empty soundscape windows instead of using zero-padding.
 
 ## 2. Shared Synergies (Non-Redundant Path)
-Multiple plans (`DATA_STRATEGY_JIRA`, `UNIFIED_5S_JIRA`) have been merged into a single optimized path. **Follow this order:**
+Follow the execution order in `docs/IMPLEMENTATION_ROADMAP.md`:
 
-### Phase 1: The Foundation (Immediate Priority)
-1. **[BIR-105/UNI-104] Master Registry:** Create `species_registry.json` mapping all 234 IDs to indices.
-2. **[BIR-101/UNI-103] Dense Scan:** Run 1s-stride feature extraction on `train_soundscapes`. This is the most computationally expensive task.
-3. **[BIR-106/UNI-106] GroupKFold:** Assign `group_id` based on 1-minute filenames to prevent leakage.
+### Phase 1: Shared Infrastructure (Immediate Priority)
+1. **[SHR-101] Master Registry:** Create mapping for all 234 species IDs.
+2. **[SHR-102] Dense Scan:** Run 1s-stride feature extraction on `train_soundscapes`.
+3. **[SHR-103] GroupKFold:** Map soundscapes to parent IDs to prevent leakage.
+4. **[SHR-104] Noise Harvesting:** Extract 5s "pure noise" segments.
 
-### Phase 2: Refinement & Harvesting
-1. **[UNI-101] Noise Harvesting:** Extract 5s "pure noise" segments from unlabeled soundscape windows.
-2. **[BIR-103] Model-Guided Selection:** Use the V1 model to pick the "strongest" 5s windows from soundscapes for training.
-3. **[UNI-102] Contextual Stitching:** Use harvested noise to pad curated audio < 5s.
+### Phase 2: Refinement & Augmentation
+- Implement **Branch A (5s Unified)** for high-fidelity refinement.
+- Implement **Branch B (1s Stitching)** for massive data augmentation.
 
 ### Phase 3: Assembly & V2 Training
-1. **[UNI-104] Dataset Assembly:** Create `train_v2_master.csv` combining all refined sources.
-2. **[UNI-106] V2 Training:** Train the 4-branch model (adding BirdNET branch as planned in `MODELING_PLAN.md`).
+1. **[V2-301] Dataset Assembly:** Merge all sources into `train_v2_master.csv`.
+2. **[V2-302] V2 Training:** Train the 4-branch model (Adding BirdNET branch).
 
 ## 3. Essential Documentation
 Before starting, the next implementer MUST read:
-1. `docs/UNIFIED_PIPELINE_SYNERGIES.md` (The "Source of Truth" for the path forward).
-2. `docs/SOUNDSCAPE_REFINEMENT_GUIDE.md` (Technical implementation details).
-3. `docs/DATA_STRATEGY_JIRA.md` & `docs/UNIFIED_5S_IMPLEMENTATION_JIRA.md`.
+1. `docs/IMPLEMENTATION_ROADMAP.md` (The "Source of Truth" for the path forward).
+2. `docs/STRATEGY_5S_UNIFIED.md` (Detailed centering & stitching strategy).
+3. `docs/STRATEGY_1S_STITCHING.md` (Detailed high-res augmentation strategy).
 
 ## 4. Environment Notes
 - **Local:** Intel Mac (CPU-only). Use `PYTHONPATH=. uv run python3 src/...`.
