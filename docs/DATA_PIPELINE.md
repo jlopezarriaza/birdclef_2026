@@ -72,3 +72,34 @@ To optimize the training bottleneck (on-the-fly audio loading), we convert all 5
 ```bash
 PYTHONPATH=. uv run python3 src/audio/precalculate_spectrograms.py --workers 8
 ```
+
+## 3. Soundscape Dense Scan (High-Density Resolution)
+
+### Overview
+To bridge the gap between clean 5s training clips and noisy 60s soundscapes, we perform a "Dense Scan" of the soundscapes using a 1s sliding window stride. This results in 56 overlapping 5-second windows per 60s file.
+
+### Soundscape Embedding Extraction
+- **Source:** `src/audio/extract_embeddings_soundscapes.py`
+- **Logic:**
+    1. Loads full 60s soundscape audio at 32kHz.
+    2. Slices into 56 overlapping 5s windows (stride=1s).
+    3. Extracts Perch v1 (1280-dim) embeddings for each window.
+    4. Saves compressed `.npz` files (shape: `56, 1280`) for each soundscape in `data/processed/soundscape_embeddings/`.
+
+### Soundscape Spectrogram Precalculation
+- **Source:** `src/audio/precalculate_soundscape_spectrograms.py`
+- **Logic:**
+    1. Loads full 60s soundscape audio at 32kHz.
+    2. Slices into 56 overlapping 5s windows (stride=1s).
+    3. Generates 224x224 RGB Mel-spectrograms for each window.
+    4. Saves as PNGs in `data/processed/soundscape_spectrograms/{filename}/{window_index:02d}.png`.
+
+### Execution
+To (re)generate soundscape artifacts:
+```bash
+# For embeddings
+PYTHONPATH=. uv run python3 src/audio/extract_embeddings_soundscapes.py --workers 4
+
+# For spectrograms
+PYTHONPATH=. uv run python3 src/audio/precalculate_soundscape_spectrograms.py --workers 4
+```
