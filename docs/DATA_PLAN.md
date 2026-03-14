@@ -20,8 +20,15 @@
 - **Metadata:**
     - **Geospatial:** Latitude/Longitude (standardized).
     - **Temporal:** Cyclic encoding (Sin/Cos) for Month and Day of Year.
+## 3. Vocalization Centering (Model-Guided Refinement)
+To avoid training on "mostly noise" windows where the bird is not the loudest sound (e.g., wind, insects), we will use **Model-Guided Slicing**:
+- **Strategy:** We will use the model trained on curated `train_audio` to scan the 1-minute soundscapes.
+- **Selection:** For a labeled species interval, we will select the 5-second window (within a ±2s buffer) that yields the **highest confidence score** from the model for that specific species.
+- **Fallback:** For the 28 species missing from curated audio, we will use **BirdNET-guided** peak selection (BirdNET feature energy in the relevant frequency bands).
+- **Goal:** This ensures the 5-second training sample actually contains the distinctive vocalization features of the target bird, even in low Signal-to-Noise Ratio (SNR) environments.
 
-## 3. Data Augmentation (Future Experiments)
+## 4. Data Augmentation (Future Experiments)
+...
 - **Time-Domain:** Pitch shifting, time stretching, and background noise injection (using Pantanal-specific noise from soundscapes).
 - **Frequency-Domain:** SpecAugment (time/frequency masking) on spectrograms.
 - **Mixup:** Blending two audio files to simulate simultaneous vocalizations.
