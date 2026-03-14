@@ -53,3 +53,22 @@ To (re)generate the embeddings:
 uv run python3 src/audio/extract_embeddings.py
 ```
 *Note: This process may take several hours on CPU for the full 35,000+ files.*
+
+## 2. Spectrogram Precalculation
+
+### Overview
+To optimize the training bottleneck (on-the-fly audio loading), we convert all 5-second training recordings into 224x224 RGB PNG images. This reduces training time per epoch by 10-20x as it eliminates the `librosa` Mel-spectrogram computation and file decoding overhead.
+
+### Script
+- **Source:** `src/audio/precalculate_spectrograms.py`
+- **Logic:**
+    1. Loads 5s audio at 32kHz.
+    2. Computes Mel-spectrogram (128 mels, 50-14,000Hz).
+    3. Normalizes and flips vertically.
+    4. Resizes to 224x224.
+    5. Saves as 3-channel RGB PNG in `data/processed/spectrograms/`.
+
+### Execution
+```bash
+PYTHONPATH=. uv run python3 src/audio/precalculate_spectrograms.py --workers 8
+```

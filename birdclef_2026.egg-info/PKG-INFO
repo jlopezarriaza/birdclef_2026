@@ -1,0 +1,56 @@
+Metadata-Version: 2.4
+Name: birdclef-2026
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: albumentations>=2.0.8
+Requires-Dist: google-cloud-storage>=3.9.0
+Requires-Dist: jupyterlab>=4.5.6
+Requires-Dist: kaggle==2.0.0
+Requires-Dist: kagglehub>=1.0.0
+Requires-Dist: librosa<=0.11.0
+Requires-Dist: llvmlite<=0.43.0
+Requires-Dist: matplotlib>=3.9.4
+Requires-Dist: numba<=0.60.0
+Requires-Dist: numpy<2.0
+Requires-Dist: opencv-python>=4.11.0.86
+Requires-Dist: opencv-python-headless<4.10
+Requires-Dist: pandas>=2.3.3
+Requires-Dist: pyyaml>=6.0.3
+Requires-Dist: scikit-learn>=1.6.1
+Requires-Dist: setuptools<70
+Requires-Dist: soundfile>=0.13.1
+Requires-Dist: birdnetlib>=0.4.5
+Requires-Dist: tensorflow>=2.15.0
+Requires-Dist: tensorflow-hub>=0.16.1
+Requires-Dist: tensorflow-text>=2.15.0
+Requires-Dist: timm>=1.0.25
+Requires-Dist: torch==2.2.2
+Requires-Dist: torchaudio==2.2.2
+Requires-Dist: torchvision==0.17.2
+Requires-Dist: tqdm>=4.67.3
+
+# BirdCLEF 2026 - Bird Species Identification in the Pantanal Wetlands
+
+Repository for the [Kaggle BirdCLEF 2026 Competition](https://www.kaggle.com/competitions/birdclef-2026).
+
+## Goal
+Develop machine learning models to identify bird species from continuous audio recordings in the Pantanal wetlands of Brazil.
+
+## Competition Details
+- **Target:** Identify species (primarily birds) from 5-second windows of audio.
+- **Metric:** Macro-averaged ROC-AUC (skipping classes with no true positive labels).
+- **Data:** 32 kHz `.ogg` files.
+- **Submission:** A CSV file with probabilities for each target species for each 5-second window.
+
+## Project Structure
+- `data/`: Raw and processed audio data, metadata, and models (ignored by git).
+- `notebooks/`: Exploratory Data Analysis (EDA) and prototyping.
+- `src/`: Core logic for audio processing, model architecture, training, and inference.
+
+## Setup
+Using `uv` for package management:
+```bash
+uv sync
+```

@@ -1,7 +1,7 @@
-# Use official TensorFlow CPU base image
-FROM tensorflow/tensorflow:2.18.0
+# Use official Python 3.11 image
+FROM python:3.11-slim
 
-# Install essential system tools
+# 1. Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     git \
@@ -10,39 +10,32 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# 2. Install Google Cloud SDK (for gsutil)
+RUN curl -sSL https://sdk.cloud.google.com | bash
+ENV PATH $PATH:/root/google-cloud-sdk/bin
 
-# Set working directory
 WORKDIR /app
 
-# Copy project configuration
-COPY pyproject.toml uv.lock ./
+# 3. Install EXACT Perch v2 stack (Discovery from successful smoke test)
+# Bake these in so the Vertex node starts instantly and reliably
+RUN pip install --no-cache-dir \
+    "tensorflow-cpu~=2.20.0" \
+    "tensorflow-text~=2.20.0" \
+    tensorflow-hub \
+    kagglehub \
+    numpy \
+    librosa \
+    pandas \
+    tqdm \
+    kaggle
 
-# Install tf-nightly and latest hub
-RUN pip install tf-nightly tensorflow-hub
-
-# Install other dependencies
-RUN uv pip install --system \
-    "librosa<=0.11.0" \
-    "soundfile>=0.13.1" \
-    "pandas>=2.3.3" \
-    "numpy<2.0" \
-    "tqdm>=4.67.3" \
-    "scikit-learn>=1.6.1" \
-    "matplotlib>=3.9.4" \
-    "kaggle==2.0.0" \
-    "kagglehub>=1.0.0" \
-    "google-cloud-storage" \
-    "opencv-python"
-
-# Copy the source code
+# 4. Copy source code
 COPY src/ ./src/
 
-# Environment variables
-ENV TF_XLA_FLAGS="--tf_xla_auto_jit=1"
+# 5. Set environment variables
+ENV TF_XLA_FLAGS="--tf_xla_auto_jit=-1"
 ENV TF_CPP_MIN_LOG_LEVEL="2"
 ENV PYTHONUNBUFFERED=1
 
-# Default command: run embedding extraction for Perch v2 (Cloud SavedModel Optimized)
-ENTRYPOINT ["python3", "src/audio/extract_embeddings_v2_local.py"]
+# 6. Entrypoint directly to the script
+ENTRYPOINT ["python3", "src/audio/extract_embeddings_v2.py"]

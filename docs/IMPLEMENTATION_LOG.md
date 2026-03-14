@@ -117,3 +117,33 @@ This log tracks the development progress, experiments, and architectural decisio
 
 ### Reversions
 - **Reverted Local Environment:** Reverted `pyproject.toml` to stable baseline (TF 2.15.0, Numpy < 2.0) after `perch-hoplite` attempt failed due to Intel Mac wheel availability for TF 2.20.0.
+
+## [2026-03-13] - Multi-Modal Fusion Implementation
+
+### Completed
+- **Fusion Model Architecture:**
+    - Created `src/models/fusion_model.py`.
+    - Implemented a 3-branch Keras model:
+        - **Branch A (Audio):** Pre-calculated Perch v1 embeddings (1,280-dim).
+        - **Branch B (Visual):** EfficientNetB0 backbone for on-the-fly Mel-spectrogram processing.
+        - **Branch C (Metadata):** Spatio-Temporal context (Latitude, Longitude, Month, Day of Year).
+- **Fusion Data Generator:**
+    - Created `src/training/train_fusion.py`.
+    - Implemented `FusionDataGenerator` to synchronize spectrogram generation, embedding retrieval, and metadata extraction.
+    - Automated temporal feature extraction from iNaturalist URLs (Unix timestamps) and soundscape filenames.
+- **Verification:**
+    - Successfully ran a test training loop with a small subset of the data (500 samples).
+    - Confirmed that accuracy increases and loss decreases across epochs.
+    - Verified `embedding_idx` mapping between CSV metadata and `.npz` embedding arrays.
+- **Optimization & Cloud Deployment:**
+    - Created `src/audio/precalculate_spectrograms.py` for multi-core conversion of audio to 224x224 PNGs.
+    - Updated `FusionDataGenerator` to support loading precalculated images, reducing CPU overhead during training by 10-20x.
+    - Containerized the fusion training pipeline with `Dockerfile.fusion`.
+    - Created `job_config_fusion.yaml` and `deploy_fusion.sh` for Vertex AI `n1-standard-32` deployment.
+    - Automated cloud data setup (Kaggle download + GCS embedding sync) in `src/training/train_fusion.py`.
+
+### Next Steps
+- [ ] Train the full fusion model on the complete dataset.
+- [ ] Implement a "Late Fusion" ensemble for comparison (averaging probabilities).
+- [ ] Integrate Perch v2 and BirdNET embeddings into the fusion architecture (High-dim branch).
+- [ ] Develop a dedicated validation script for `train_soundscapes`.

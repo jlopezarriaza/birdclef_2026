@@ -1,0 +1,21 @@
+# Light CPU-based TFLite smoke test
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Minimal TFLite/Hub/Kagglehub stack
+RUN pip install --no-cache-dir \
+    tensorflow-cpu \
+    kagglehub \
+    numpy
+
+# Copy source
+COPY src/ ./src/
+
+# Run the TFLite test
+ENTRYPOINT ["python3", "src/vertex_test_perch_v2_tflite.py"]
