@@ -3,7 +3,10 @@
 ## 1. Validation Strategy
 - **Phase 1:** Stratified 5-Fold Cross-Validation on `train_audio` (short recordings).
 - **Phase 2:** Out-of-Distribution (OOD) Validation on `train_soundscapes` (the "real world" test).
-- **Metric:** Macro-averaged ROC-AUC, tracking both "Overall" and "Per-Site" performance to ensure the model generalizes across the Pantanal.
+- **Metric:** **Macro-averaged ROC-AUC**. 
+    - *Nuance:* The competition metric skips classes that have no true positive labels in the evaluation slice. 
+    - *Action:* In future training scripts, we must use `tf.keras.metrics.AUC(name='macro_auc', multi_class='ovr')` to better align with the leaderboard.
+- **Metric Tracking:** Track both "Overall" and "Per-Site" performance to ensure the model generalizes across the Pantanal.
 
 ## 2. Training Workflow
 1. **Fold Training:** Split the 35k recordings into 5 folds, ensuring no species is missing from any validation set.
