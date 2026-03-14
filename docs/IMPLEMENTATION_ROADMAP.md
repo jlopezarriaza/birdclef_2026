@@ -32,3 +32,11 @@ Once Phase 1 is complete, implement the specific logic for each strategy.
 - **[V2-301] Unified Dataset Assembly:** Merge all samples (Clean, Stitched, and Guided) into a master CSV.
 - **[V2-302] V2 Fusion Model Training:** Train the 4-branch model (Adding BirdNET branch) using multi-label sigmoid head.
 - **[V2-303] Soundscape Validation:** Final OOD evaluation on hold-out soundscape folds.
+
+---
+
+## Phase 4: Optimization & Ensembling (Lightweight Path)
+- **[ENS-401] Feature Concatenation Pipeline:** Create a script to merge Perch and BirdNET embeddings into a flat vector.
+- **[ENS-402] XGBoost/LightGBM Training:** Train an efficient ensemble on the flat feature vectors.
+- **[ENS-403] Meta-Classifier (Stacking):** Implement the logic to blend Deep Fusion and Ensemble probabilities.
+- **[ENS-404] Inference Speed Benchmark:** Measure the CPU runtime of both models to ensure 90-minute compliance.
