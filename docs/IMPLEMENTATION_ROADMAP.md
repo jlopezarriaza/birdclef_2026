@@ -10,7 +10,7 @@ These tasks provide the foundation for both strategies.
 - [x] **[SHR-101] Master 234-Species Registry:** Create a fixed JSON mapping for all competition species.
 - [x] **[SHR-102] Dense Feature Scan:** Run Perch/BirdNET extraction on all soundscapes with 1s stride (56 windows/file).
 - [x] **[SHR-102-S] Soundscape Spectrogram Scan:** Pre-calculate 5s spectrograms for all soundscapes with 1s stride to reduce training bottleneck.
-- [ ] **[SHR-103] GroupKFold Registry:** Map soundscape slices to parent file IDs to prevent data leakage.
+- [x] **[SHR-103] GroupKFold Registry:** Map soundscape slices to parent file IDs to prevent data leakage.
 - **[SHR-104] Noise Harvesting:** Extract "Pure Noise" banks from unlabeled soundscape segments.
 
 ---

@@ -191,7 +191,12 @@ This log tracks the development progress, experiments, and architectural decisio
     - Modified `src/audio/spectrograms.py` to support generating from audio arrays directly.
     - Implemented 1s-stride Mel-spectrogram generation (224x224 RGB PNGs).
     - CPU optimized with multiprocessing.
+- **[SHR-103] GroupKFold Registry:**
+    - Created `src/training/create_soundscape_kfold_registry.py`.
+    - Mapped 56 overlapping 5s windows (1s stride) per soundscape to their labels from `train_soundscapes_labels.csv`.
+    - Implemented 5-fold GroupKFold split by `filename` to prevent data leakage.
+    - Generated a multi-label encoded registry at `data/processed/soundscape_kfold_registry.csv` with 234 species columns.
+    - Verified fold distribution and label density (approx. 4.2 species per window).
 
 ### Next Steps
-- [ ] Implement **[SHR-103] GroupKFold Registry**: Map soundscape slices to parent file IDs to prevent data leakage.
 - [ ] Implement **[SHR-104] Noise Harvesting**: Extract "Pure Noise" banks from unlabeled soundscape segments.
