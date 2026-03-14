@@ -16,12 +16,13 @@ Follow the execution order in `docs/IMPLEMENTATION_ROADMAP.md`:
 1. **[SHR-101] Master Registry:** COMPLETED. Fixed JSON mapping at `data/processed/species_registry.json`.
 2. **[SHR-102] Dense Scan:** COMPLETED. High-density Perch v1 embeddings extracted for soundscapes.
 3. **[SHR-102-S] Soundscape Spectrograms:** COMPLETED. 224x224 RGB spectrograms pre-calculated for all soundscapes (1s stride).
-4. **[SHR-103] GroupKFold:** (NEXT) Map soundscapes to parent IDs to prevent leakage.
-5. **[SHR-104] Noise Harvesting:** Extract 5s "pure noise" segments.
+4. **[SHR-103] GroupKFold:** COMPLETED. Soundscape windows mapped to multi-label species and folds.
+5. **[SHR-104] Noise Harvesting:** COMPLETED. 127,157 five-second "no-call" clips extracted.
+6. **[SHR-105] High-Resolution Dataset Builder:** COMPLETED. Unified manifest `train_hr_manifest.csv` ready for training.
 
 ### Phase 2: Refinement & Augmentation
-- Implement **Branch A (5s Unified)** for high-fidelity refinement.
-- Implement **Branch B (1s Stitching)** for massive data augmentation.
+1. **[SHR-106] High-Resolution Training:** (NEXT) Implement the PyTorch/Keras training loop using the new HR manifest and noise augmentation.
+
 
 ### Phase 3: Assembly & V2 Training
 1. **[V2-301] Dataset Assembly:** Merge all sources into `train_v2_master.csv`.

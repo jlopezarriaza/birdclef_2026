@@ -205,5 +205,14 @@ This log tracks the development progress, experiments, and architectural decisio
     - Generated a metadata registry at `data/processed/noise_bank_registry.csv` linking each noise clip to its parent soundscape and timestamp.
     - Verified that clips cover nearly all of the 10,658 soundscapes, excluding 59 files with continuous labeling.
 
+- **[SHR-105] High-Resolution Dataset Builder:**
+    - Created `src/training/build_hr_dataset.py`.
+    - Implemented a unified training manifest generator that combines positive species samples (`train_audio/`) with background noise samples (`noise_bank/`).
+    - Added a configurable **Noise-to-Signal ratio** (default: 0.2) to improve model robustness against "no-call" segments.
+    - Integrated fast duration lookup using `soundfile` to populate the manifest metadata.
+    - Verified consistency with `species_registry.json` (all 234 species covered).
+    - Generated `data/processed/train_hr_manifest.csv` with 44,436 total samples (35,549 positive, 8,887 noise).
+
 ### Next Steps
-- [ ] TBD.
+- [ ] [SHR-106] High-Resolution Training: Implement a PyTorch/Keras training loop using the new HR manifest and noise augmentation.
+
