@@ -142,8 +142,31 @@ This log tracks the development progress, experiments, and architectural decisio
     - Created `job_config_fusion.yaml` and `deploy_fusion.sh` for Vertex AI `n1-standard-32` deployment.
     - Automated cloud data setup (Kaggle download + GCS embedding sync) in `src/training/train_fusion.py`.
 
+## [2026-03-13] - Perch v2 Migration & Extraction Saga
+
+### Completed
+- **Technical Discovery:**
+    - Confirmed **Perch v2** SavedModel (default) is CUDA-locked and fails on CPU nodes with `The current platform CPU is not among the platforms required by the module: [CUDA]`.
+    - Identified CPU-specific variant via Kaggle public notebooks: `google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu/1`.
+    - Verified that **TensorFlow 2.20.0** is strictly required to deserialize the VHLO bytecode in Perch v2.
+    - Confirmed embedding dimension has increased from 1,280 (v1) to **1,536 (v2)**.
+- **Environment Stabilization:**
+    - Created a "Bootstrap" strategy for Vertex AI to install the heavy TF 2.20 stack at runtime, bypassing local build/space issues.
+    - Successfully verified the CPU variant with a "Smoke Test" on a standard Vertex AI node (`perch-v2-smoke-test-20260313-1859`).
+- **Robust Extraction Script:**
+    - Updated `src/audio/extract_embeddings_v2.py` with automatic `kaggle.json` creation and multi-worker safety fixes.
+
+### Trials & Observations (Final Blockers)
+- **Kaggle Auth persistent failure:** Despite injecting `KAGGLE_USERNAME` and `KAGGLE_KEY` and creating `.kaggle/kaggle.json` at runtime, the Vertex AI extraction job (`3712730929374953472`) failed with `401 Unauthorized` during the competition data download.
+- **Probable Cause:** The service account identity or the linked Kaggle API key may not have accepted the competition rules, or the CLI requires an interactive login refresh that isn't happening on the headless node.
+
+### Status
+- **Halted:** Perch v2 extraction is technically verified (smoke test pass) but blocked by authentication at scale. Using Perch v1 embeddings for now to maintain momentum on the Fusion Model.
+
 ### Next Steps
+- [ ] Pre-download competition data to a GCS bucket instead of relying on Kaggle CLI at runtime on Vertex.
+- [ ] Update Fusion Model `Branch A` to support the 1,536-dim Perch v2 vector if/when extracted.
 - [ ] Train the full fusion model on the complete dataset.
 - [ ] Implement a "Late Fusion" ensemble for comparison (averaging probabilities).
-- [ ] Integrate Perch v2 and BirdNET embeddings into the fusion architecture (High-dim branch).
+- [ ] Integrate BirdNET embeddings into the fusion architecture (High-dim branch).
 - [ ] Develop a dedicated validation script for `train_soundscapes`.
