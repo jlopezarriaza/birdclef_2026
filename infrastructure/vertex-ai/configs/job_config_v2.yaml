@@ -1,0 +1,15 @@
+workerPoolSpecs:
+  machineSpec:
+    machineType: n1-standard-32
+  replicaCount: 1
+  containerSpec:
+    imageUri: us-central1-docker.pkg.dev/birdclef-490003/birdclef-repo/perch-extractor:v2-final
+    args:
+    - --workers=24
+    - --batch_size=1000
+    - --gcs_bucket=birdclef-2026-data-birdclef-490003
+    env:
+    - name: KAGGLE_USERNAME
+      value: "juanlopezarriaza"
+    - name: KAGGLE_KEY
+      value: "KGAT_45b265057d2a434f2e2eec260e818fe9"

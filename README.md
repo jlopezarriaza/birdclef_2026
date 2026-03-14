@@ -32,6 +32,8 @@ uv run tensorboard --logdir logs/
 ### 3. Cloud Deployment (Vertex AI)
 To train on Vertex AI using 32 cores:
 ```bash
+cd infrastructure/vertex-ai/scripts
+
 # Full training (6-8 hours)
 ./deploy_fusion.sh
 
@@ -41,10 +43,15 @@ To train on Vertex AI using 32 cores:
 
 ## Project Structure
 - `data/`: Raw and processed audio data, metadata, and models (ignored by git).
+- `infrastructure/`:
+    - `docker/`: Dockerfiles for various models.
+    - `vertex-ai/configs/`: Job and Cloud Build configurations.
+    - `vertex-ai/scripts/`: Deployment and automation scripts.
 - `notebooks/`: Exploratory Data Analysis (EDA) and prototyping.
 - `src/`: Core logic for audio processing, model architecture, training, and inference.
     - `models/fusion_model.py`: 3-branch Fusion Model (Audio + Visual + Metadata).
     - `training/train_fusion.py`: Main training loop and data generator.
+- `scripts/`: Utility scripts for EDA and maintenance.
 
 ## Setup
 Using `uv` for package management:
