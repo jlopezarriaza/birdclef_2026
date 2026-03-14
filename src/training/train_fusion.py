@@ -106,6 +106,8 @@ class FusionDataGenerator(tf.keras.utils.Sequence):
         if self.shuffle:
             self.df = self.df.sample(frac=1).reset_index(drop=True)
 
+from src.training.metrics import CompetitionAUC
+
 def train_fusion_model(limit=None):
     # 1. Setup Paths
     processed_dir = "data/processed"
@@ -193,7 +195,8 @@ def train_fusion_model(limit=None):
     callbacks = [
         tf.keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
         tf.keras.callbacks.ModelCheckpoint(model_path, save_best_only=True),
-        tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=2)
+        tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=2),
+        CompetitionAUC(val_gen)
     ]
     
     # Add TensorBoard logging
