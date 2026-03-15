@@ -58,7 +58,17 @@ Create a unified model where only the EfficientNet backbone is fine-tuned while 
 - **Memory Limits:** Running two heavy backbones simultaneously during inference might hit the Kaggle 90-minute limit or memory constraints.
 - **Optimization:** Balancing the learning rates so the Fusion head doesn't overpower the EfficientNet fine-tuning.
 
-## 5. Next Steps for Developer
+## 5. Post-Training Utilization: High-Quality Filtering
+Once the Fusion Model is trained on the initial `train_audio` set (Phase 1/2), it serves a critical role in refining the training data for the final "Breakthrough" model:
+
+### Fusion-Guided Peak Selection
+Instead of using fixed 5-second windows (e.g., first 5s), the Fusion Model will scan the *entire duration* of the longer `train_audio` files.
+- **Goal:** Identify the 5-second window with the highest confidence score for the primary species.
+- **Process:** Sliding window (e.g., 1s stride) across all 35,000+ audio samples.
+- **Output:** A refined manifest of "Peak 5s Windows" for each species.
+
+## 6. Next Steps for Developer
 1. Create `src/models/fusion_model.py`.
 2. Implement a `FusionDataGenerator` that loads pre-calculated Perch `.npz` files and generates on-the-fly spectrograms.
 3. Train the head on the combined feature set.
+4. **NEW:** Implement `src/audio/select_fusion_peaks.py` to refine the `train_audio` dataset using the pre-trained weights.
