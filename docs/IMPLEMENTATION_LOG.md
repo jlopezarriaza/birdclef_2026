@@ -213,6 +213,20 @@ This log tracks the development progress, experiments, and architectural decisio
     - Verified consistency with `species_registry.json` (all 234 species covered).
     - Generated `data/processed/train_hr_manifest.csv` with 44,436 total samples (35,549 positive, 8,887 noise).
 
+## [2026-03-14] - Phase 2: Refinement & Peak Selection
+
+### Completed
+- **[5S-201] Fusion-Guided Peak Selection:**
+    - Created `src/audio/select_fusion_peaks.py`.
+    - Implemented "Hybrid Selection Logic" defined in `docs/STRATEGY_5S_UNIFIED.md`.
+    - Integrated the trained **Fusion Model v1** (`models/fusion_model_v1.keras`) to scan 35,550 `train_audio` files with a 1s stride.
+    - **Logic:**
+        - **Known Species (202):** Select 5s window with highest model confidence.
+        - **Gap Species (32) / Low Confidence (<0.15):** Fallback to RMS energy peak.
+    - Optimized with `soundfile` for faster loading and `multiprocessing` for parallel inference.
+    - Verified on 100 samples, generating `data/processed/train_v2_peaks.csv`.
+
 ### Next Steps
-- [ ] [SHR-106] High-Resolution Training: Implement a PyTorch/Keras training loop using the new HR manifest and noise augmentation.
+- [ ] [5S-202] Contextual Stitcher: Implement the logic to "re-center" `train_audio` vocalizations and pad with harvested noise.
+- [ ] [SHR-106] High-Resolution Training: Train the full fusion model on the unified HR dataset.
 

@@ -1,13 +1,13 @@
 # Handoff Notes: Soundscape Refinement & Unified 5s Training
 
 **Current Status (March 14, 2026):**
-- **V1 Model:** A 3-branch Fusion Model (EfficientNetB0 + Perch v1 + Metadata) is currently training locally on curated `train_audio`.
-- **Performance:** Reached ~0.98 AUC on clean data by Epoch 9. Expected to struggle on noisy soundscapes.
-- **Infrastructure:** [SHR-101] Master Registry implemented (234 species).
-- **Repository:** Cleaned and reorganized. Core logic in `src/`, infrastructure in `infrastructure/`.
+- **V1 Model:** A 3-branch Fusion Model (EfficientNetB0 + Perch v1 + Metadata) reached Epoch 15 with ~0.95 validation AUC.
+- **Phase 1 Infrastructure:** COMPLETE. Master Registry (234 species), Dense Scan, Soundscape Spectrograms, GroupKFold, Noise Harvesting (127k clips), and HR Dataset Builder are finished.
+- **Phase 2 Implementation:** [5S-201] Fusion-Guided Peak Selection is COMPLETED. Manifest at `data/processed/train_v2_peaks.csv` verified on 100 samples.
 
 ## 1. The Core Strategy: "Unified 5s Resolution"
-... (rest of section 1) ...
+...
+ (rest of section 1) ...
 
 ## 2. Shared Synergies (Non-Redundant Path)
 Follow the execution order in `docs/IMPLEMENTATION_ROADMAP.md`:
