@@ -1,0 +1,15 @@
+workerPoolSpecs:
+  machineSpec:
+    machineType: n1-standard-32
+  replicaCount: 1
+  containerSpec:
+    imageUri: us-central1-docker.pkg.dev/birdclef-490003/birdclef-repo/perch-extractor@sha256:419ed8505048904b23dec160d575a93ac46a28748430b45368a4ca0527d09bbe
+    command: ["python3", "src/audio/select_fusion_peaks_fast.py"]
+    args:
+    - --workers=30
+    - --gcs_bucket=birdclef-2026-data-birdclef-490003
+    env:
+    - name: GCS_BUCKET
+      value: "birdclef-2026-data-birdclef-490003"
+    - name: PYTHONPATH
+      value: "."
