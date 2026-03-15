@@ -1,7 +1,7 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/birdclef-490003/birdclef-repo/perch-extractor:test-v2', '.']
+    args: ['build', '-f', 'infrastructure/docker/Dockerfile', '-t', 'us-central1-docker.pkg.dev/birdclef-490003/birdclef-repo/perch-extractor:test-v2', '.']
   
   # Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'

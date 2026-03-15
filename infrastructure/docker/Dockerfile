@@ -25,6 +25,8 @@ RUN pip install --no-cache-dir \
     kagglehub \
     numpy \
     librosa \
+    soundfile \
+    opencv-python-headless \
     pandas \
     tqdm \
     kaggle
