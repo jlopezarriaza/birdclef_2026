@@ -15,6 +15,16 @@ def sync_from_gcs(bucket, local_dir, remote_path):
         os.makedirs(os.path.dirname(local_dir), exist_ok=True)
         os.system(f"gsutil -m cp -r gs://{bucket}/{remote_path} {local_dir}")
 
+def download_from_kaggle(raw_dir):
+    """Download competition data if missing."""
+    if not os.path.exists(os.path.join(raw_dir, "train.csv")):
+        print("Data missing. Downloading from Kaggle...")
+        zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
+        os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
+        if os.path.exists(zip_path):
+            os.system(f"unzip -qo {zip_path} -d {raw_dir}")
+            os.remove(zip_path)
+
 def process_file_worker(row, raw_dir, noise_bank_dir, output_dir, noise_filenames):
     filename = row['filename']
     target_species = row['primary_label']
@@ -77,9 +87,20 @@ def main():
     bucket = args.gcs_bucket or os.getenv("GCS_BUCKET")
     if bucket:
         if not os.path.exists(peak_csv): os.system(f"gsutil cp gs://{bucket}/processed/train_v2_peaks_fast.csv {peak_csv}")
-        if not os.path.exists(noise_registry): os.system(f"gsutil cp gs://{bucket}/processed/noise_bank_registry.csv {noise_registry}")
-        sync_from_gcs(bucket, os.path.join(raw_dir, "train_audio"), "raw/train_audio")
+        if not os.path.exists(noise_registry): os.system(f"gsutil cp gs://{bucket}/processed/noise_bank_registry_light.csv {noise_registry}")
+        
+        # Download Audio
+        if not os.path.exists(os.path.join(raw_dir, "train_audio")):
+            try:
+                sync_from_gcs(bucket, os.path.join(raw_dir, "train_audio"), "raw/train_audio")
+            except:
+                print("GCS Audio Sync failed. Falling back to Kaggle...")
+                download_from_kaggle(raw_dir)
+        
         sync_from_gcs(bucket, noise_bank_dir, "processed/noise_bank")
+    
+    # Ensure train.csv exists
+    download_from_kaggle(raw_dir)
 
     peaks_df = pd.read_csv(peak_csv)
     noise_filenames = pd.read_csv(noise_registry)['noise_filename'].tolist()
