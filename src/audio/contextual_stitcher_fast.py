@@ -69,7 +69,7 @@ def main():
     raw_dir, processed_dir = "data/raw", "data/processed"
     peak_csv = os.path.join(processed_dir, "train_v2_peaks_fast.csv")
     noise_bank_dir = os.path.join(processed_dir, "noise_bank")
-    noise_registry = os.path.join(processed_dir, "noise_bank_registry.csv")
+    noise_registry = os.path.join(processed_dir, "noise_bank_registry_light.csv")
     output_dir = os.path.join(processed_dir, "train_v2_unified_fast")
     master_csv = os.path.join(processed_dir, "train_v2_master_fast.csv")
     os.makedirs(output_dir, exist_ok=True)
