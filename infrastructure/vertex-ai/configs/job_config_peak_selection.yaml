@@ -13,3 +13,9 @@ workerPoolSpecs:
       value: "birdclef-2026-data-birdclef-490003"
     - name: PYTHONPATH
       value: "."
+    - name: KAGGLE_USERNAME
+      value: "juanlopezarriaza"
+    - name: KAGGLE_KEY
+      value: "KGAT_45b265057d2a434f2e2eec260e818fe9"
+    - name: KAGGLE_API_TOKEN
+      value: "KGAT_45b265057d2a434f2e2eec260e818fe9"

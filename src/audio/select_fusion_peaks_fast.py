@@ -11,6 +11,7 @@ from functools import partial
 from datetime import datetime
 import json
 import gc
+import subprocess
 
 # Internal imports
 from src.audio.spectrograms import SpectrogramGenerator
@@ -25,22 +26,30 @@ os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
 warnings.filterwarnings("ignore", category=UserWarning, module="numba")
 warnings.filterwarnings("ignore", category=UserWarning, module="librosa")
 
-def load_perch_v1():
-    """Load stable Perch v1 from kagglehub."""
-    import kagglehub
-    model_path = kagglehub.model_download('google/bird-vocalization-classifier/tensorFlow2/bird-vocalization-classifier/4')
+def load_perch_v1(model_path=None):
+    """Load stable Perch v1. If path is None, download via kagglehub."""
+    if model_path is None:
+        import kagglehub
+        print("Downloading Perch v1...")
+        model_path = kagglehub.model_download('google/bird-vocalization-classifier/tensorFlow2/bird-vocalization-classifier/4')
+    
     model = tf.saved_model.load(model_path)
-    return model
+    return model, model_path
 
 def load_fusion_model(model_path):
     """Load the trained Fusion Model."""
     model = tf.keras.models.load_model(model_path, compile=False)
     return model
 
-def worker_init(fusion_model_path, known_species):
+def worker_init(perch_model_path, fusion_model_path, known_species):
     global perch_instance, fusion_instance, spec_gen, species_list
+    # Prevent all workers from hitting the disk at the exact same microsecond
+    import time
+    import random
+    time.sleep(random.random() * 2) 
+    
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-    perch_instance = load_perch_v1()
+    perch_instance, _ = load_perch_v1(perch_model_path)
     fusion_instance = load_fusion_model(fusion_model_path)
     spec_gen = SpectrogramGenerator(img_size=224)
     species_list = known_species
@@ -163,21 +172,48 @@ def process_file_worker(row_dict, raw_dir):
     except Exception as e:
         return {"filename": filename, "error": str(e)}
 
+def run_command(cmd):
+    print(f"Running: {cmd}")
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Command failed with return code {result.returncode}")
+        print(f"Stdout: {result.stdout}")
+        print(f"Stderr: {result.stderr}")
+        return False
+    return True
+
 def sync_from_gcs(bucket, local_dir, remote_path):
-    if not os.path.exists(local_dir):
-        print(f"Syncing {remote_path} from gs://{bucket}...")
-        os.makedirs(os.path.dirname(local_dir), exist_ok=True)
-        os.system(f"gsutil -m cp -r gs://{bucket}/{remote_path} {local_dir}")
+    print(f"Syncing {remote_path} from gs://{bucket}...")
+    os.makedirs(local_dir, exist_ok=True)
+    # Use rsync for efficiency and robustness
+    return run_command(f"gsutil -m rsync -r gs://{bucket}/{remote_path} {local_dir}")
+
+def setup_kaggle_creds():
+    """Setup kaggle.json if environment variables are present."""
+    username = os.getenv("KAGGLE_USERNAME")
+    key = os.getenv("KAGGLE_KEY") or os.getenv("KAGGLE_API_TOKEN")
+    if username and key:
+        kaggle_dir = os.path.expanduser("~/.kaggle")
+        os.makedirs(kaggle_dir, exist_ok=True)
+        with open(os.path.join(kaggle_dir, "kaggle.json"), "w") as f:
+            json.dump({"username": username, "key": key}, f)
+        os.chmod(os.path.join(kaggle_dir, "kaggle.json"), 0o600)
+        print("Kaggle credentials configured.")
+        return True
+    return False
 
 def download_from_kaggle(raw_dir):
     """Download competition data if missing."""
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
         print("Data missing. Downloading from Kaggle...")
+        setup_kaggle_creds()
         zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
-        os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
-        if os.path.exists(zip_path):
-            os.system(f"unzip -qo {zip_path} -d {raw_dir}")
-            os.remove(zip_path)
+        if run_command(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}"):
+            if os.path.exists(zip_path):
+                run_command(f"unzip -qo {zip_path} -d {raw_dir}")
+                os.remove(zip_path)
+                return True
+    return False
 
 def main():
     import argparse
@@ -193,35 +229,52 @@ def main():
     train_perch_csv = "data/processed/train_with_perch_v1.csv"
     output_path = os.path.join(processed_dir, "train_v2_peaks_fast.csv")
     os.makedirs(processed_dir, exist_ok=True)
+    os.makedirs(os.path.join(raw_dir, "train_audio"), exist_ok=True)
+    os.makedirs("models", exist_ok=True)
     
     bucket = args.gcs_bucket or os.getenv("GCS_BUCKET")
     if bucket:
-        if not os.path.exists(registry_path): os.system(f"gsutil cp gs://{bucket}/processed/species_registry.json {registry_path}")
-        if not os.path.exists(train_perch_csv): os.system(f"gsutil cp gs://{bucket}/processed/train_with_perch_v1.csv {train_perch_csv}")
-        if not os.path.exists(model_path): os.system(f"gsutil cp gs://{bucket}/models/fusion_model_v1.keras {model_path}")
+        print(f"Cloud mode enabled. Using bucket: {bucket}")
+        # Sync Registry and Metadata
+        run_command(f"gsutil cp gs://{bucket}/processed/species_registry.json {registry_path}")
+        run_command(f"gsutil cp gs://{bucket}/processed/train_with_perch_v1.csv {train_perch_csv}")
+        run_command(f"gsutil cp gs://{bucket}/models/fusion_model_v1.keras {model_path}")
         
         # Download Audio
-        if not os.path.exists(os.path.join(raw_dir, "train_audio")):
-            try:
-                sync_from_gcs(bucket, os.path.join(raw_dir, "train_audio"), "raw/train_audio")
-            except:
-                print("GCS Audio Sync failed. Falling back to Kaggle...")
-                download_from_kaggle(raw_dir)
-    
-    # Ensure train.csv exists (Kaggle fallback)
-    download_from_kaggle(raw_dir)
+        if not sync_from_gcs(bucket, os.path.join(raw_dir, "train_audio"), "raw/train_audio"):
+            print("GCS Audio Sync failed. Falling back to Kaggle...")
+            download_from_kaggle(raw_dir)
+    else:
+        # Local mode: check Kaggle anyway
+        download_from_kaggle(raw_dir)
 
+    if not os.path.exists(train_perch_csv):
+        print(f"CRITICAL ERROR: {train_perch_csv} missing.")
+        return
+
+    # 1. Prepare Models and Data
+    print("Preparing models...")
+    setup_kaggle_creds()
+    _, perch_model_path = load_perch_v1() # Download once
+    
     df_train_perch = pd.read_csv(train_perch_csv)
     counts = df_train_perch['primary_label'].value_counts()
     known_species = sorted(df_train_perch[df_train_perch['primary_label'].isin(counts[counts >= 2].index)]['primary_label'].unique().tolist())
     
-    train_df = pd.read_csv(os.path.join(raw_dir, "train.csv"))
+    train_csv_path = os.path.join(raw_dir, "train.csv")
+    if not os.path.exists(train_csv_path):
+        if bucket: run_command(f"gsutil cp gs://{bucket}/raw/train.csv {train_csv_path}")
+        if not os.path.exists(train_csv_path):
+            print("CRITICAL ERROR: train.csv missing.")
+            return
+
+    train_df = pd.read_csv(train_csv_path)
     if args.limit: train_df = train_df.head(args.limit)
     rows = train_df.to_dict('records')
     
     print(f"FAST Peak Selection ({len(rows)} files, 5s stride) with {args.workers} workers...")
     ctx = mp.get_context('spawn')
-    with ctx.Pool(processes=args.workers, initializer=worker_init, initargs=(model_path, known_species)) as pool:
+    with ctx.Pool(processes=args.workers, initializer=worker_init, initargs=(perch_model_path, model_path, known_species)) as pool:
         process_func = partial(process_file_worker, raw_dir=raw_dir)
         results = []
         checkpoint_interval = 1000
@@ -236,7 +289,7 @@ def main():
     output_df = pd.DataFrame([r for r in results if "error" not in r])
     output_df.to_csv(output_path, index=False)
     print(f"\nFinal: Saved {len(output_df)} peak selections to {output_path}")
-    if bucket: os.system(f"gsutil cp {output_path} gs://{bucket}/processed/train_v2_peaks_fast.csv")
+    if bucket: run_command(f"gsutil cp {output_path} gs://{bucket}/processed/train_v2_peaks_fast.csv")
 
 if __name__ == "__main__":
     main()

@@ -19,8 +19,8 @@ WORKDIR /app
 # 3. Install EXACT Perch v2 stack (Discovery from successful smoke test)
 # Bake these in so the Vertex node starts instantly and reliably
 RUN pip install --no-cache-dir \
-    "tensorflow-cpu~=2.20.0" \
-    "tensorflow-text~=2.20.0" \
+    "tensorflow-cpu==2.15.0" \
+    "tensorflow-text==2.15.0" \
     tensorflow-hub \
     kagglehub \
     numpy \

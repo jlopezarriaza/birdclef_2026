@@ -8,22 +8,50 @@ import multiprocessing as mp
 from functools import partial
 import random
 import gc
+import subprocess
+import json
+
+def run_command(cmd):
+    print(f"Running: {cmd}")
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Command failed with return code {result.returncode}")
+        print(f"Stdout: {result.stdout}")
+        print(f"Stderr: {result.stderr}")
+        return False
+    return True
 
 def sync_from_gcs(bucket, local_dir, remote_path):
-    if not os.path.exists(local_dir):
-        print(f"Syncing {remote_path} from gs://{bucket}...")
-        os.makedirs(os.path.dirname(local_dir), exist_ok=True)
-        os.system(f"gsutil -m cp -r gs://{bucket}/{remote_path} {local_dir}")
+    print(f"Syncing {remote_path} from gs://{bucket}...")
+    os.makedirs(local_dir, exist_ok=True)
+    return run_command(f"gsutil -m rsync -r gs://{bucket}/{remote_path} {local_dir}")
+
+def setup_kaggle_creds():
+    """Setup kaggle.json if environment variables are present."""
+    username = os.getenv("KAGGLE_USERNAME")
+    key = os.getenv("KAGGLE_KEY") or os.getenv("KAGGLE_API_TOKEN")
+    if username and key:
+        kaggle_dir = os.path.expanduser("~/.kaggle")
+        os.makedirs(kaggle_dir, exist_ok=True)
+        with open(os.path.join(kaggle_dir, "kaggle.json"), "w") as f:
+            json.dump({"username": username, "key": key}, f)
+        os.chmod(os.path.join(kaggle_dir, "kaggle.json"), 0o600)
+        print("Kaggle credentials configured.")
+        return True
+    return False
 
 def download_from_kaggle(raw_dir):
     """Download competition data if missing."""
     if not os.path.exists(os.path.join(raw_dir, "train.csv")):
         print("Data missing. Downloading from Kaggle...")
+        setup_kaggle_creds()
         zip_path = os.path.join(raw_dir, "birdclef-2026.zip")
-        os.system(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}")
-        if os.path.exists(zip_path):
-            os.system(f"unzip -qo {zip_path} -d {raw_dir}")
-            os.remove(zip_path)
+        if run_command(f"kaggle competitions download -c birdclef-2026 -p {raw_dir}"):
+            if os.path.exists(zip_path):
+                run_command(f"unzip -qo {zip_path} -d {raw_dir}")
+                os.remove(zip_path)
+                return True
+    return False
 
 def process_file_worker(row, raw_dir, noise_bank_dir, output_dir, noise_filenames):
     filename = row['filename']
@@ -83,24 +111,27 @@ def main():
     output_dir = os.path.join(processed_dir, "train_v2_unified_fast")
     master_csv = os.path.join(processed_dir, "train_v2_master_fast.csv")
     os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.join(raw_dir, "train_audio"), exist_ok=True)
 
     bucket = args.gcs_bucket or os.getenv("GCS_BUCKET")
     if bucket:
-        if not os.path.exists(peak_csv): os.system(f"gsutil cp gs://{bucket}/processed/train_v2_peaks_fast.csv {peak_csv}")
-        if not os.path.exists(noise_registry): os.system(f"gsutil cp gs://{bucket}/processed/noise_bank_registry_light.csv {noise_registry}")
+        print(f"Cloud mode enabled. Using bucket: {bucket}")
+        if not os.path.exists(peak_csv): run_command(f"gsutil cp gs://{bucket}/processed/train_v2_peaks_fast.csv {peak_csv}")
+        if not os.path.exists(noise_registry): run_command(f"gsutil cp gs://{bucket}/processed/noise_bank_registry_light.csv {noise_registry}")
         
         # Download Audio
-        if not os.path.exists(os.path.join(raw_dir, "train_audio")):
-            try:
-                sync_from_gcs(bucket, os.path.join(raw_dir, "train_audio"), "raw/train_audio")
-            except:
-                print("GCS Audio Sync failed. Falling back to Kaggle...")
-                download_from_kaggle(raw_dir)
+        if not sync_from_gcs(bucket, os.path.join(raw_dir, "train_audio"), "raw/train_audio"):
+            print("GCS Audio Sync failed. Falling back to Kaggle...")
+            download_from_kaggle(raw_dir)
         
         sync_from_gcs(bucket, noise_bank_dir, "processed/noise_bank")
     
     # Ensure train.csv exists
     download_from_kaggle(raw_dir)
+
+    if not os.path.exists(peak_csv):
+        print(f"CRITICAL ERROR: {peak_csv} missing.")
+        return
 
     peaks_df = pd.read_csv(peak_csv)
     noise_filenames = pd.read_csv(noise_registry)['noise_filename'].tolist()
@@ -114,13 +145,13 @@ def main():
         for res in tqdm(pool.imap_unordered(process_func, rows), total=len(rows)):
             results.append(res)
             if bucket and len(results) % 2000 == 0:
-                os.system(f"gsutil -m cp {output_dir}/*.wav gs://{bucket}/processed/train_v2_unified_fast/")
+                run_command(f"gsutil -m cp {output_dir}/*.wav gs://{bucket}/processed/train_v2_unified_fast/")
 
     final_df = pd.DataFrame([r for r in results if r['status'] in ['success', 'exists']])
     final_df.to_csv(master_csv, index=False)
     if bucket:
-        os.system(f"gsutil -m cp {output_dir}/*.wav gs://{bucket}/processed/train_v2_unified_fast/")
-        os.system(f"gsutil cp {master_csv} gs://{bucket}/processed/train_v2_master_fast.csv")
+        run_command(f"gsutil -m cp {output_dir}/*.wav gs://{bucket}/processed/train_v2_unified_fast/")
+        run_command(f"gsutil cp {master_csv} gs://{bucket}/processed/train_v2_master_fast.csv")
 
 if __name__ == "__main__":
     main()
