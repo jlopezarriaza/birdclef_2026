@@ -213,20 +213,29 @@ This log tracks the development progress, experiments, and architectural decisio
     - Verified consistency with `species_registry.json` (all 234 species covered).
     - Generated `data/processed/train_hr_manifest.csv` with 44,436 total samples (35,549 positive, 8,887 noise).
 
-## [2026-03-14] - Phase 2: Refinement & Peak Selection
+## [2026-03-16] - Phase 2: Success & Cloud Scaling
 
 ### Completed
-- **[5S-201] Fusion-Guided Peak Selection:**
-    - Created `src/audio/select_fusion_peaks.py`.
-    - Implemented "Hybrid Selection Logic" defined in `docs/STRATEGY_5S_UNIFIED.md`.
-    - Integrated the trained **Fusion Model v1** (`models/fusion_model_v1.keras`) to scan 35,550 `train_audio` files with a 1s stride.
-    - **Logic:**
-        - **Known Species (202):** Select 5s window with highest model confidence.
-        - **Gap Species (32) / Low Confidence (<0.15):** Fallback to RMS energy peak.
-    - Optimized with `soundfile` for faster loading and `multiprocessing` for parallel inference.
-    - Verified on 100 samples, generating `data/processed/train_v2_peaks.csv`.
+- **[5S-201] Fusion-Guided Peak Selection (Fast):**
+    - Successfully ran the full 35,549-file dataset on Vertex AI (`n1-standard-32`).
+    - Used 5s consecutive windows (no overlap) to reduce compute time from ~100 hours to ~8 hours.
+    - Generated the refined manifest `gs://birdclef-2026-data-birdclef-490003/processed/train_v2_peaks_fast.csv`.
+- **[5S-202] Contextual Stitcher (Fast):**
+    - Successfully processed all 35,549 files on Vertex AI.
+    - Implemented "Vocalization Centering" logic:
+        - **Cropped:** High-confidence 5s segments from long recordings.
+        - **Stitched:** Short recordings (< 5s) padded with random Pantanal background noise.
+    - Output dataset (35,549 WAV files) saved to `gs://birdclef-2026-data-birdclef-490003/processed/train_v2_unified_fast/`.
+    - Generated master training manifest `gs://birdclef-2026-data-birdclef-490003/processed/train_v2_master_fast.csv`.
+- **Noise Bank Optimization:**
+    - Reduced the noise bank from 127k clips (38GB) to a highly diverse set of 10,000 clips (~3GB).
+    - Ensures faster cloud synchronization and efficient storage.
+- **Vertex AI Stabilization:**
+    - Resolved race conditions in parallel model loading by downloading once in main.
+    - Fixed Keras deserialization errors by pinning **TensorFlow 2.15.0** in the Docker image.
+    - Implemented robust `gsutil rsync` and Kaggle CLI fallback logic.
 
 ### Next Steps
-- [ ] [5S-202] Contextual Stitcher: Implement the logic to "re-center" `train_audio` vocalizations and pad with harvested noise.
-- [ ] [SHR-106] High-Resolution Training: Train the full fusion model on the unified HR dataset.
+- [ ] [SHR-106] High-Resolution Training: Train the full fusion model on the unified 5s dataset (`train_v2_master_fast.csv`).
+- [ ] Implement robust augmentations (Mixup, Freq/Time Masking) for the V2 model.
 

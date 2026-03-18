@@ -20,7 +20,7 @@ Once Phase 1 is complete, implement the specific logic for each strategy.
 
 ### Branch A: 5s Unified (Refinement)
 - [x] **[5S-201] Fusion-Guided Peak Selection:** Use the pre-trained Fusion model to scan `train_audio` and find the highest confidence 5s windows for each species.
-- [ ] **[5S-202] Contextual Stitcher:** Pad curated audio < 5s using harvested noise.
+- [x] **[5S-202] Contextual Stitcher:** Pad curated audio < 5s using harvested noise.
 - [ ] **[5S-203] Refinement EDA:** Visualize Confidence Peaks vs. Energy Peaks.
 
 ### Branch B: 1s Stitching (Augmentation)
